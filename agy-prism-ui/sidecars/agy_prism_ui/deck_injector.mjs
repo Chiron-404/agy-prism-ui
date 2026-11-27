@@ -1596,6 +1596,8 @@ function installRuntime(owner, hash) {
   let uiObserver = null;
   let overviewExpanded = false;
   let overviewScrollPending = false;
+  let lastHomeHost = null;
+  let lastPageHost = null;
 
   const readFooterModelText = () => {
     const footer = document.querySelector('.agy-composer-footer > div:first-child');
@@ -1701,11 +1703,15 @@ function installRuntime(owner, hash) {
     let pageHost = document.getElementById('agy-heatmap-page-host');
     if (heatmapOpen && pane) {
       if (!pageHost) {
+        if (lastPageHost?.shadowRoot) {
+          hmUi.cleanupHeatmapRoot?.(lastPageHost.shadowRoot);
+        }
         pageHost = document.createElement('div');
         pageHost.id = 'agy-heatmap-page-host';
         pageHost.style.cssText = 'position:absolute;inset:0;z-index:45;display:block;';
         pageHost.attachShadow({ mode: 'open' });
       }
+      lastPageHost = pageHost;
       if (pageHost.parentElement !== pane) pane.appendChild(pageHost);
       pageHost.style.display = 'block';
       hmUi.renderFullHeatmap(pageHost.shadowRoot, heatmapData, {
@@ -1731,7 +1737,14 @@ function installRuntime(owner, hash) {
         },
       });
     } else if (pageHost) {
+      if (pageHost.style.display !== 'none') {
+        hmUi.cleanupHeatmapRoot?.(pageHost.shadowRoot);
+        if (pageHost.shadowRoot) pageHost.shadowRoot._hmRenderKey = '';
+      }
       pageHost.style.display = 'none';
+    } else if (lastPageHost?.shadowRoot) {
+      hmUi.cleanupHeatmapRoot?.(lastPageHost.shadowRoot);
+      lastPageHost = null;
     }
 
     let homeHost = document.getElementById('agy-heatmap-home-host');
@@ -1740,6 +1753,9 @@ function installRuntime(owner, hash) {
     if (isHomeRoute() && !heatmapOpen && homeParent) {
       const needsAttach = !homeHost || homeHost.parentElement !== homeParent || homeHost.nextElementSibling !== composer;
       if (!homeHost) {
+        if (lastHomeHost?.shadowRoot) {
+          hmUi.cleanupHeatmapRoot?.(lastHomeHost.shadowRoot);
+        }
         homeHost = document.createElement('div');
         homeHost.id = 'agy-heatmap-home-host';
         homeHost.style.cssText = 'width:100%;max-width:768px;margin:0 auto 14px;display:block;opacity:0;transform:translateY(6px);transition:opacity 220ms cubic-bezier(0.22, 1, 0.36, 1), transform 220ms cubic-bezier(0.22, 1, 0.36, 1);';
@@ -1748,6 +1764,7 @@ function installRuntime(owner, hash) {
         homeHost.style.opacity = '0';
         homeHost.style.transform = 'translateY(6px)';
       }
+      lastHomeHost = homeHost;
       if (needsAttach) {
         composer.insertAdjacentElement('beforebegin', homeHost);
       }
@@ -1775,6 +1792,10 @@ function installRuntime(owner, hash) {
     } else if (homeHost) {
       hmUi.cleanupHeatmapRoot?.(homeHost.shadowRoot);
       homeHost.remove();
+      if (lastHomeHost === homeHost) lastHomeHost = null;
+    } else if (lastHomeHost?.shadowRoot) {
+      hmUi.cleanupHeatmapRoot?.(lastHomeHost.shadowRoot);
+      lastHomeHost = null;
     }
   };
 
@@ -1994,8 +2015,14 @@ function installRuntime(owner, hash) {
         sidebarListenerRoot.removeEventListener('click', sidebarListener, true);
       }
       const hmCleaner = hmUiRef?.cleanupHeatmapRoot || globalThis.__agyPrismHeatmapUI?.cleanupHeatmapRoot;
-      hmCleaner?.(document.getElementById('agy-heatmap-home-host')?.shadowRoot);
-      hmCleaner?.(document.getElementById('agy-heatmap-page-host')?.shadowRoot);
+      const liveHomeRoot = document.getElementById('agy-heatmap-home-host')?.shadowRoot;
+      const livePageRoot = document.getElementById('agy-heatmap-page-host')?.shadowRoot;
+      hmCleaner?.(liveHomeRoot);
+      hmCleaner?.(livePageRoot);
+      if (lastHomeHost?.shadowRoot && lastHomeHost.shadowRoot !== liveHomeRoot) hmCleaner?.(lastHomeHost.shadowRoot);
+      if (lastPageHost?.shadowRoot && lastPageHost.shadowRoot !== livePageRoot) hmCleaner?.(lastPageHost.shadowRoot);
+      lastHomeHost = null;
+      lastPageHost = null;
       optical?.dispose();
       delete document.documentElement.dataset.agyHmOpen;
       document.getElementById('agy-heatmap-nav-btn')?.remove();

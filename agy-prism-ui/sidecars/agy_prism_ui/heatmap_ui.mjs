@@ -125,18 +125,32 @@ export function createHeatmapRenderer() {
     try { globalThis.localStorage?.setItem('agy-prism-ui-heatmap-theme', name); } catch {}
   }
 
+  let homeCollapsedFallback = null;
+  let homeCollapsedStorageFailed = false;
+
   function loadHomeCollapsed() {
+    if (homeCollapsedStorageFailed && homeCollapsedFallback !== null) {
+      return homeCollapsedFallback;
+    }
     try {
       const cur = globalThis.localStorage?.getItem('agy-prism-ui-heatmap-home-collapsed');
-      if (cur !== null) return cur === '1';
-      return globalThis.localStorage?.getItem('agy-capsule-heatmap-home-collapsed') === '1';
+      if (cur !== null && cur !== undefined) return cur === '1';
+      const legacy = globalThis.localStorage?.getItem('agy-capsule-heatmap-home-collapsed');
+      if (legacy !== null && legacy !== undefined) return legacy === '1';
+      return homeCollapsedFallback ?? false;
     } catch {
-      return false;
+      return homeCollapsedFallback ?? false;
     }
   }
 
   function saveHomeCollapsed(val) {
-    try { globalThis.localStorage?.setItem('agy-prism-ui-heatmap-home-collapsed', val ? '1' : '0'); } catch {}
+    homeCollapsedFallback = Boolean(val);
+    try {
+      globalThis.localStorage?.setItem('agy-prism-ui-heatmap-home-collapsed', val ? '1' : '0');
+      homeCollapsedStorageFailed = false;
+    } catch {
+      homeCollapsedStorageFailed = true;
+    }
   }
 
   function detectDarkMode() {
@@ -500,14 +514,29 @@ export function createHeatmapRenderer() {
       });
     }
 
-    pop.addEventListener('click', (ev) => ev.stopPropagation());
+    hideTip();
+    if (!pop.hidden) closePop();
+    if (!pop.dataset.hmPopClickBound) {
+      pop.dataset.hmPopClickBound = '1';
+      pop.addEventListener('click', (ev) => ev.stopPropagation());
+    }
     if (root._hmOutsidePopHandler) {
-      document.removeEventListener('click', root._hmOutsidePopHandler);
+      if (typeof document !== 'undefined') document.removeEventListener('click', root._hmOutsidePopHandler);
       root.removeEventListener('click', root._hmOutsidePopHandler);
     }
-    root._hmOutsidePopHandler = () => { hideTip(); if (!pop.hidden) closePop(); };
+    let lastHandledClick = null;
+    root._hmOutsidePopHandler = (ev) => {
+      if (ev && ev === lastHandledClick) return;
+      lastHandledClick = ev || null;
+      if (root.host && root.host.isConnected === false) {
+        cleanupHeatmapRoot(root);
+        return;
+      }
+      hideTip();
+      if (!pop.hidden) closePop();
+    };
     root.addEventListener('click', root._hmOutsidePopHandler);
-    document.addEventListener('click', root._hmOutsidePopHandler);
+    if (typeof document !== 'undefined') document.addEventListener('click', root._hmOutsidePopHandler);
   }
 
   function cleanupHeatmapRoot(root) {
@@ -521,6 +550,9 @@ export function createHeatmapRenderer() {
       root._hmHomeNearCleanup();
       root._hmHomeNearCleanup = null;
     }
+    root._hmHomeShellKey = '';
+    root._hmUpdateHomeData = null;
+    root._hmLastPointer = null;
     if (root.host && root.host.dataset?.hmOrigZ !== undefined) {
       root.host.style.zIndex = root.host.dataset.hmOrigZ;
       delete root.host.dataset.hmOrigZ;
@@ -1167,7 +1199,7 @@ ${getDayPopCss(accent, dark)}
       + `    <div class="hm-kpi-pop" role="tooltip">`
       + `      <div class="hm-kpi-pop-row"><span>总计</span><strong>${esc(fmtTok(totals.totalTokens))}</strong></div>`
       + `      <div class="hm-kpi-pop-row"><span>非缓存输入 (In)</span><strong>${esc(fmtTok(totals.inputTokens))}</strong></div>`
-      + `      <div class="hm-kpi-pop-row"><span>缓存读取 (Cache)</span><strong>${esc(fmtTok(totals.cacheTokens))} (${(totals.cacheHitRate || 0).toFixed(1)}%)</strong></div>`
+      + `      <div class="hm-kpi-pop-row"><span>缓存读取 (Cache)</span><strong>${esc(fmtTok(totals.cacheTokens))} (${(Number(totals.cacheHitRate) || 0).toFixed(1)}%)</strong></div>`
       + `      <div class="hm-kpi-pop-row"><span>输出 (Out)</span><strong>${esc(fmtTok(totals.outputTokens))}</strong></div>`
       + ((totals.thinkingTokens || 0) > 0 ? `<div class="hm-kpi-pop-row"><span>思考 (Think)</span><strong>${esc(fmtTok(totals.thinkingTokens))}</strong></div>` : '')
       + ((totals.totalCostUsd || 0) > 0 ? `<div class="hm-kpi-pop-row"><span>估算费用</span><strong>${esc(fmtUsd(totals.totalCostUsd))}</strong></div>` : '')
@@ -1175,7 +1207,7 @@ ${getDayPopCss(accent, dark)}
       + `  </div>`
       + `  <div class="hm-card" title="最长连续 ${activity.longestStreak || 0} 天"><div class="hm-kpi-label">活跃天数 / 连续</div><div class="hm-kpi-val">${activity.activeDays || 0} 天</div><div class="hm-kpi-sub">当前连续 ${activity.currentStreak || 0} 天 · 最长 ${activity.longestStreak || 0} 天</div></div>`
       + `  <div class="hm-card"><div class="hm-kpi-label">总会话数</div><div class="hm-kpi-val">${totals.conversationCount || 0}</div><div class="hm-kpi-sub">主会话 ${totals.mainCount || 0} · 子智能体 ${totals.subagentCount || 0}</div></div>`
-      + `  <div class="hm-card"><div class="hm-kpi-label">单日最高</div><div class="hm-kpi-val">${esc(activity.peakDay ? fmtTok(activity.peakDay.t) : '0')}</div><div class="hm-kpi-sub">全局缓存命中 ${(totals.cacheHitRate || 0).toFixed(1)}%${activity.peakDay ? ` · ${activity.peakDay.d.slice(5)}` : ''}</div></div>`
+      + `  <div class="hm-card"><div class="hm-kpi-label">单日最高</div><div class="hm-kpi-val">${esc(activity.peakDay ? fmtTok(activity.peakDay.t) : '0')}</div><div class="hm-kpi-sub">全局缓存命中 ${(Number(totals.cacheHitRate) || 0).toFixed(1)}%${activity.peakDay ? ` · ${activity.peakDay.d.slice(5)}` : ''}</div></div>`
       + `</div>`
       + `<div class="hm-card" data-hm-full-card style="position:relative">`
       + `  <div class="hm-card-head"><span class="hm-card-title">52 周活跃热力图</span><span class="hm-legend">少 ${palette.map(c => `<i class="hm-legend-box" style="background:${c}"></i>`).join('')} 多</span></div>`
@@ -1198,15 +1230,45 @@ ${getDayPopCss(accent, dark)}
     return pad.concat(nonFuture);
   }
 
-  function buildHomeHtml(data, { themeName = loadSavedTheme(), dark = detectDarkMode(), collapsed = loadHomeCollapsed() } = {}) {
+  function formatHomeStatsText(data, collapsed) {
+    if (!data) return '加载中…';
+    const bucket = data?.sources?.all;
+    const totals = bucket?.totals || { totalTokens: 0 };
+    const activity = bucket?.activity || { currentStreak: 0 };
+    return `${collapsed ? '近 14 天' : '近 12 周'} · 累计 ${fmtTok(totals.totalTokens)} · 连续 ${activity.currentStreak || 0} 天`;
+  }
+
+  function buildHomeBodyHtml(bucket, { themeName, dark, collapsed }) {
     const theme = THEMES[themeName] || THEMES[DEFAULT_THEME];
     const palette = dark ? theme.dark : theme.light;
-    const accent = dark ? theme.accentDark : theme.accent;
-    const bucket = data?.sources?.all;
     const totals = bucket?.totals || { totalTokens: 0, cacheHitRate: 0 };
     const activity = bucket?.activity || { currentStreak: 0, activeDays: 0, peakDay: null };
     const cells = getHomeCells(bucket, collapsed);
     const defaultDay = [...cells].reverse().find(d => d.d && d.t > 0) || pickDefaultDay(bucket);
+
+    return collapsed
+      ? `<div class="hm-home-collapsed">`
+        + buildHomeGridSvg(cells, theme, dark)
+        + `  <div class="hm-home-foot"><span class="hm-home-detail" data-hm-home-detail>${esc(formatCompactDay(defaultDay))}</span><span class="hm-legend">少 ${palette.map(c => `<i class="hm-legend-box" style="background:${c}"></i>`).join('')} 多</span></div>`
+        + `</div>`
+      : `<div class="hm-home-expanded">`
+        + `  <div>${buildHomeGridSvg(cells, theme, dark)}</div>`
+        + `  <div class="hm-home-side">`
+        + `    <div class="hm-home-kpis">`
+        + `      <div class="hm-home-kpi"><div class="hm-home-kpi-l">累计 Token</div><div class="hm-home-kpi-v">${esc(fmtTok(totals.totalTokens))}</div></div>`
+        + `      <div class="hm-home-kpi"><div class="hm-home-kpi-l">活跃 / 连续</div><div class="hm-home-kpi-v">${activity.activeDays || 0} 天 · ${activity.currentStreak || 0} 连</div></div>`
+        + `      <div class="hm-home-kpi"><div class="hm-home-kpi-l">单日峰值</div><div class="hm-home-kpi-v">${esc(activity.peakDay ? fmtTok(activity.peakDay.t) : '0')}</div></div>`
+        + `      <div class="hm-home-kpi"><div class="hm-home-kpi-l">缓存命中</div><div class="hm-home-kpi-v">${(Number(totals.cacheHitRate) || 0).toFixed(1)}%</div></div>`
+        + `    </div>`
+        + `    <div class="hm-home-foot"><span class="hm-home-detail" data-hm-home-detail>${esc(formatCompactDay(defaultDay))}</span><span class="hm-legend">少 ${palette.map(c => `<i class="hm-legend-box" style="background:${c}"></i>`).join('')} 多</span></div>`
+        + `  </div>`
+        + `</div>`;
+  }
+
+  function buildHomeHtml(data, { themeName = loadSavedTheme(), dark = detectDarkMode(), collapsed = loadHomeCollapsed() } = {}) {
+    const theme = THEMES[themeName] || THEMES[DEFAULT_THEME];
+    const accent = dark ? theme.accentDark : theme.accent;
+    const bucket = data?.sources?.all;
 
     const style = `
       <style>
@@ -1251,14 +1313,12 @@ ${getDayPopCss(accent, dark)}
           transition: opacity 420ms cubic-bezier(0.22, 1, 0.36, 1);
           background: radial-gradient(260px circle at var(--hm-px, 50%) var(--hm-py, 50%), rgba(56, 189, 248, 0.42), rgba(66, 133, 244, 0.32) 40%, rgba(155, 114, 203, 0.22) 70%, transparent 90%);
         }
-        .hm-home-card[data-hm-near="1"]::before,
-        .hm-home-card:hover::before {
-          opacity: calc(var(--hm-near-alpha, 1) * ${dark ? '0.32' : '0.26'});
+        .hm-home-card[data-hm-near="1"]::before {
+          opacity: calc(var(--hm-near-alpha, 0) * ${dark ? '0.32' : '0.26'});
           transition: opacity 160ms ease-out;
         }
-        .hm-home-card[data-hm-near="1"]::after,
-        .hm-home-card:hover::after {
-          opacity: calc(var(--hm-near-alpha, 1) * ${dark ? '0.40' : '0.34'});
+        .hm-home-card[data-hm-near="1"]::after {
+          opacity: calc(var(--hm-near-alpha, 0) * ${dark ? '0.40' : '0.34'});
           transition: opacity 160ms ease-out;
         }
         .hm-home-card * { box-sizing: border-box; }
@@ -1332,8 +1392,22 @@ ${getDayPopCss(accent, dark)}
           background: color-mix(in srgb, ${accent} 8%, transparent);
         }
         .hm-home-arrow svg {
-          transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
-          transform: rotate(${collapsed ? '180deg' : '0deg'});
+          transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+          transform: rotate(0deg);
+        }
+        .hm-home-card[data-collapsed="1"] .hm-home-arrow svg {
+          transform: rotate(180deg);
+        }
+        @keyframes hm-home-swap {
+          from { opacity: 0.35; }
+          to { opacity: 1; }
+        }
+        .hm-home-body[data-hm-swapping="1"] > * {
+          animation: hm-home-swap 180ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .hm-home-arrow svg { transition: none; }
+          .hm-home-body[data-hm-swapping="1"] > * { animation: none; }
         }
         .hm-home-body {
           margin-top: 7px;
@@ -1415,29 +1489,13 @@ ${getDayPopCss(accent, dark)}
     const iconSvg = '<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1.4" opacity="0.45"/><rect x="9" y="1.5" width="5.5" height="5.5" rx="1.4" opacity="0.75"/><rect x="1.5" y="9" width="5.5" height="5.5" rx="1.4" opacity="0.75"/><rect x="9" y="9" width="5.5" height="5.5" rx="1.4"/></svg>';
     const arrowSvg = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>';
 
-    const bodyHtml = collapsed
-      ? `<div class="hm-home-collapsed">`
-        + buildHomeGridSvg(cells, theme, dark)
-        + `  <div class="hm-home-foot"><span class="hm-home-detail" data-hm-home-detail>${esc(formatCompactDay(defaultDay))}</span><span class="hm-legend">少 ${palette.map(c => `<i class="hm-legend-box" style="background:${c}"></i>`).join('')} 多</span></div>`
-        + `</div>`
-      : `<div class="hm-home-expanded">`
-        + `  <div>${buildHomeGridSvg(cells, theme, dark)}</div>`
-        + `  <div class="hm-home-side">`
-        + `    <div class="hm-home-kpis">`
-        + `      <div class="hm-home-kpi"><div class="hm-home-kpi-l">累计 Token</div><div class="hm-home-kpi-v">${esc(fmtTok(totals.totalTokens))}</div></div>`
-        + `      <div class="hm-home-kpi"><div class="hm-home-kpi-l">活跃 / 连续</div><div class="hm-home-kpi-v">${activity.activeDays || 0} 天 · ${activity.currentStreak || 0} 连</div></div>`
-        + `      <div class="hm-home-kpi"><div class="hm-home-kpi-l">单日峰值</div><div class="hm-home-kpi-v">${esc(activity.peakDay ? fmtTok(activity.peakDay.t) : '0')}</div></div>`
-        + `      <div class="hm-home-kpi"><div class="hm-home-kpi-l">缓存命中</div><div class="hm-home-kpi-v">${(totals.cacheHitRate || 0).toFixed(1)}%</div></div>`
-        + `    </div>`
-        + `    <div class="hm-home-foot"><span class="hm-home-detail" data-hm-home-detail>${esc(formatCompactDay(defaultDay))}</span><span class="hm-legend">少 ${palette.map(c => `<i class="hm-legend-box" style="background:${c}"></i>`).join('')} 多</span></div>`
-        + `  </div>`
-        + `</div>`;
+    const bodyHtml = buildHomeBodyHtml(bucket, { themeName, dark, collapsed });
 
-    return `${style}<div class="hm-home-card">`
+    return `${style}<div class="hm-home-card" data-collapsed="${collapsed ? '1' : '0'}">`
       + `<div class="hm-home-head">`
       + `  <div class="hm-home-left">`
       + `    <button type="button" class="hm-home-open" data-hm-home="open" title="打开 Insights 完整视图"><span class="hm-home-ico">${iconSvg}</span><span class="hm-home-title">Insights</span></button>`
-      + `    <span class="hm-home-stats">${data ? `${collapsed ? '近 14 天' : '近 12 周'} · 累计 ${esc(fmtTok(totals.totalTokens))} · 连续 ${activity.currentStreak || 0} 天` : '加载中…'}</span>`
+      + `    <span class="hm-home-stats">${esc(formatHomeStatsText(data, collapsed))}</span>`
       + `  </div>`
       + `  <button type="button" class="hm-home-arrow" data-hm-home="toggle" title="${collapsed ? '展开近 12 周' : '收起为近 14 天'}" aria-expanded="${!collapsed}">${arrowSvg}</button>`
       + `</div>`
@@ -1578,75 +1636,239 @@ ${getDayPopCss(accent, dark)}
     if (!root) return;
     const themeName = loadSavedTheme();
     const dark = detectDarkMode();
-    const collapsed = loadHomeCollapsed();
-    const renderKey = JSON.stringify([data?.generatedAt || 0, themeName, dark, collapsed]);
+    let curCollapsed = loadHomeCollapsed();
+    const renderKey = JSON.stringify([data?.generatedAt || 0, themeName, dark, curCollapsed]);
     if (root._hmHomeKey === renderKey) return;
+    const shellKey = JSON.stringify([themeName, dark]);
+    if (root._hmHomeShellKey === shellKey && root._hmUpdateHomeData && root.querySelector('.hm-home-card')?.isConnected !== false) {
+      root._hmHomeKey = renderKey;
+      root._hmUpdateHomeData(data, curCollapsed, callbacks);
+      return;
+    }
     root._hmHomeKey = renderKey;
+    root._hmHomeShellKey = shellKey;
 
-    root.innerHTML = buildHomeHtml(data, { themeName, dark, collapsed });
+    root.innerHTML = buildHomeHtml(data, { themeName, dark, collapsed: curCollapsed });
 
-    const bucket = data?.sources?.all;
-    const cells = getHomeCells(bucket, collapsed);
-    const detailEl = root.querySelector('[data-hm-home-detail]');
+    let curData = data;
+    let curCallbacks = callbacks;
     const card = root.querySelector('.hm-home-card');
     const themeObj = THEMES[themeName] || THEMES[DEFAULT_THEME];
     const palette = dark ? themeObj.dark : themeObj.light;
-    bindDayPopover(root, card, cells, 'data-home-idx', palette, (day) => {
-      if (detailEl) detailEl.textContent = formatCompactDay(day);
-    });
+    const bindHomeCells = (targetCells) => {
+      const detailEl = root.querySelector('[data-hm-home-detail]');
+      bindDayPopover(root, card, targetCells, 'data-home-idx', palette, (day) => {
+        if (detailEl) detailEl.textContent = formatCompactDay(day);
+      });
+    };
+    bindHomeCells(getHomeCells(curData?.sources?.all, curCollapsed));
 
     root.querySelector('[data-hm-home="open"]')?.addEventListener('click', () => {
-      callbacks.onOpenFull?.();
+      curCallbacks?.onOpenFull?.();
     });
     if (root._hmHomeNearCleanup) {
       root._hmHomeNearCleanup();
       root._hmHomeNearCleanup = null;
     }
+    let applyNearAt = null;
+    let bodyAnimCleanup = null;
+    const syncPointerAll = () => {
+      if (root._hmLastPointer && applyNearAt) {
+        applyNearAt(root._hmLastPointer.x, root._hmLastPointer.y);
+      }
+      globalThis.__agyPrismOptical?.refreshPointer?.(root._hmLastPointer);
+    };
     if (card && typeof document !== 'undefined') {
       const PROX = 120;
+      let rafId = 0;
+      const setCardProp = (prop, val) => {
+        if (card.style.getPropertyValue(prop) !== val) card.style.setProperty(prop, val);
+      };
       const clearNear = () => {
-        card.style.setProperty('--hm-near-alpha', '0');
+        setCardProp('--hm-near-alpha', '0');
         card.removeAttribute('data-hm-near');
       };
-      const onMove = (ev) => {
+      applyNearAt = (clientX, clientY) => {
         if (!card.isConnected) {
-          root._hmHomeNearCleanup?.();
-          root._hmHomeNearCleanup = null;
+          cleanupHeatmapRoot(root);
           return;
         }
         const r = card.getBoundingClientRect();
         if (r.width <= 0 || r.height <= 0) { clearNear(); return; }
-        const dx = Math.max(r.left - ev.clientX, 0, ev.clientX - r.right);
-        const dy = Math.max(r.top - ev.clientY, 0, ev.clientY - r.bottom);
+        const dx = Math.max(r.left - clientX, 0, clientX - r.right);
+        const dy = Math.max(r.top - clientY, 0, clientY - r.bottom);
         const dist = Math.hypot(dx, dy);
         if (dist < PROX) {
           const alpha = Math.pow(1 - dist / PROX, 1.35);
-          card.style.setProperty('--hm-px', Math.round(ev.clientX - r.left) + 'px');
-          card.style.setProperty('--hm-py', Math.round(ev.clientY - r.top) + 'px');
-          card.style.setProperty('--hm-near-alpha', alpha.toFixed(3));
+          setCardProp('--hm-px', Math.round(clientX - r.left) + 'px');
+          setCardProp('--hm-py', Math.round(clientY - r.top) + 'px');
+          setCardProp('--hm-near-alpha', alpha.toFixed(3));
           if (card.getAttribute('data-hm-near') !== '1') card.setAttribute('data-hm-near', '1');
         } else if (card.hasAttribute('data-hm-near')) {
           clearNear();
         }
       };
-      document.addEventListener('pointermove', onMove, { passive: true });
-      document.addEventListener('pointerleave', clearNear, { passive: true });
-      globalThis.addEventListener?.('blur', clearNear, { passive: true });
-      root._hmHomeNearCleanup = () => {
-        document.removeEventListener('pointermove', onMove);
-        document.removeEventListener('pointerleave', clearNear);
-        globalThis.removeEventListener?.('blur', clearNear);
+      const onMove = (ev) => {
+        root._hmLastPointer = { x: ev.clientX, y: ev.clientY };
+        applyNearAt(ev.clientX, ev.clientY);
       };
+      const onLeave = () => {
+        root._hmLastPointer = null;
+        clearNear();
+      };
+      document.addEventListener('pointermove', onMove, { passive: true });
+      document.addEventListener('pointerleave', onLeave, { passive: true });
+      globalThis.addEventListener?.('blur', onLeave, { passive: true });
+      root._hmHomeNearCleanup = () => {
+        if (rafId && typeof cancelAnimationFrame === 'function') {
+          cancelAnimationFrame(rafId);
+          rafId = 0;
+        }
+        if (bodyAnimCleanup) {
+          bodyAnimCleanup(true);
+          bodyAnimCleanup = null;
+        }
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerleave', onLeave);
+        globalThis.removeEventListener?.('blur', onLeave);
+      };
+      if (root._hmLastPointer) {
+        syncPointerAll();
+        if (typeof requestAnimationFrame === 'function') {
+          rafId = requestAnimationFrame(() => {
+            rafId = 0;
+            if (card.isConnected && root._hmLastPointer) {
+              syncPointerAll();
+            }
+          });
+        }
+      }
     }
-    root.querySelector('[data-hm-home="toggle"]')?.addEventListener('click', () => {
-      saveHomeCollapsed(!collapsed);
-      root._hmHomeKey = '';
-      renderHomeHeatmapCard(root, data, callbacks);
+    const updateBodyUi = (nextCollapsed) => {
+      const bodyEl = root.querySelector('.hm-home-body');
+      const statsEl = root.querySelector('.hm-home-stats');
+      const toggleBtn = root.querySelector('[data-hm-home="toggle"]');
+      const nextBucket = curData?.sources?.all;
+      if (!card || !bodyEl) return false;
+      card.setAttribute('data-collapsed', nextCollapsed ? '1' : '0');
+      if (statsEl) statsEl.textContent = formatHomeStatsText(curData, nextCollapsed);
+      if (toggleBtn) {
+        toggleBtn.title = nextCollapsed ? '展开近 12 周' : '收起为近 14 天';
+        toggleBtn.setAttribute('aria-expanded', String(!nextCollapsed));
+      }
+      bodyEl.innerHTML = buildHomeBodyHtml(nextBucket, { themeName, dark, collapsed: nextCollapsed });
+      bindHomeCells(getHomeCells(nextBucket, nextCollapsed));
+      return true;
+    };
+    root._hmUpdateHomeData = (nextData, nextCollapsed, nextCallbacks) => {
+      curData = nextData;
+      curCollapsed = nextCollapsed;
+      if (nextCallbacks) curCallbacks = nextCallbacks;
+      updateBodyUi(curCollapsed);
+      if (!bodyAnimCleanup) {
+        syncPointerAll();
+      }
+    };
+    root.querySelector('[data-hm-home="toggle"]')?.addEventListener('click', (ev) => {
+      if (typeof ev?.clientX === 'number' && typeof ev?.clientY === 'number' && (ev.clientX !== 0 || ev.clientY !== 0)) {
+        root._hmLastPointer = { x: ev.clientX, y: ev.clientY };
+      }
+      if (bodyAnimCleanup) {
+        bodyAnimCleanup(false);
+        bodyAnimCleanup = null;
+      }
+      const bodyEl = root.querySelector('.hm-home-body');
+      const prevBodyH = bodyEl ? bodyEl.getBoundingClientRect().height : 0;
+
+      curCollapsed = !curCollapsed;
+      saveHomeCollapsed(curCollapsed);
+      root._hmHomeKey = JSON.stringify([curData?.generatedAt || 0, themeName, dark, curCollapsed]);
+
+      if (!updateBodyUi(curCollapsed)) {
+        root._hmHomeKey = '';
+        root._hmHomeShellKey = '';
+        root._hmUpdateHomeData = null;
+        renderHomeHeatmapCard(root, curData, curCallbacks);
+        return;
+      }
+
+      const reducedMotion = Boolean(globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches);
+      bodyEl.style.height = '';
+      bodyEl.style.overflow = '';
+      bodyEl.style.transition = '';
+      bodyEl.removeAttribute('data-hm-swapping');
+      const nextBodyH = bodyEl.getBoundingClientRect().height;
+
+      if (!reducedMotion && prevBodyH > 0 && Math.abs(nextBodyH - prevBodyH) > 2 && typeof requestAnimationFrame === 'function') {
+        let loopRaf = 0;
+        let doneTimer = 0;
+        let finished = false;
+        const finish = (clearStyles) => {
+          if (finished) return;
+          finished = true;
+          if (loopRaf && typeof cancelAnimationFrame === 'function') {
+            cancelAnimationFrame(loopRaf);
+            loopRaf = 0;
+          }
+          if (doneTimer) {
+            clearTimeout(doneTimer);
+            doneTimer = 0;
+          }
+          bodyEl.removeEventListener('transitionend', onTransitionEnd);
+          if (clearStyles) {
+            bodyEl.style.height = '';
+            bodyEl.style.overflow = '';
+            bodyEl.style.transition = '';
+            bodyEl.removeAttribute('data-hm-swapping');
+            if (card.isConnected) syncPointerAll();
+          }
+          if (bodyAnimCleanup === finish) bodyAnimCleanup = null;
+        };
+        const onTransitionEnd = (te) => {
+          if (te.target === bodyEl && te.propertyName === 'height') finish(true);
+        };
+        bodyAnimCleanup = finish;
+
+        bodyEl.style.height = `${prevBodyH}px`;
+        bodyEl.style.overflow = 'hidden';
+        bodyEl.style.transition = 'none';
+        bodyEl.setAttribute('data-hm-swapping', '1');
+        void bodyEl.offsetHeight;
+        bodyEl.style.transition = 'height 220ms cubic-bezier(0.22, 1, 0.36, 1)';
+        bodyEl.style.height = `${nextBodyH}px`;
+        bodyEl.addEventListener('transitionend', onTransitionEnd);
+        doneTimer = setTimeout(() => finish(true), 260);
+        syncPointerAll();
+
+        const tick = () => {
+          if (finished || !card.isConnected) return;
+          syncPointerAll();
+          loopRaf = requestAnimationFrame(tick);
+        };
+        loopRaf = requestAnimationFrame(tick);
+      } else {
+        syncPointerAll();
+        if (typeof requestAnimationFrame === 'function') {
+          let settleRaf = requestAnimationFrame(() => {
+            settleRaf = 0;
+            if (bodyAnimCleanup === cancelSettle) bodyAnimCleanup = null;
+            if (card.isConnected) syncPointerAll();
+          });
+          const cancelSettle = () => {
+            if (settleRaf && typeof cancelAnimationFrame === 'function') {
+              cancelAnimationFrame(settleRaf);
+              settleRaf = 0;
+            }
+            if (bodyAnimCleanup === cancelSettle) bodyAnimCleanup = null;
+          };
+          bodyAnimCleanup = cancelSettle;
+        }
+      }
     });
   }
 
   return {
-    version: 21,
+    version: 24,
     THEMES,
     DEFAULT_THEME,
     fmtTok,
@@ -1659,4 +1881,4 @@ ${getDayPopCss(accent, dark)}
   };
 }
 
-export const getHeatmapRendererScript = () => `if (globalThis.__agyPrismHeatmapUI?.version !== 21) globalThis.__agyPrismHeatmapUI = (${createHeatmapRenderer.toString()})();`;
+export const getHeatmapRendererScript = () => `if (globalThis.__agyPrismHeatmapUI?.version !== 24) globalThis.__agyPrismHeatmapUI = (${createHeatmapRenderer.toString()})();`;

@@ -226,6 +226,11 @@ test('createHeatmapRenderer defaults to blue theme and renders both full dashboa
   assert.ok(home.includes('data-hm-hover-tip'));
   assert.ok(home.includes('data-hm-day-pop'));
   assert.ok(home.includes('.hm-home-card::after'));
+  assert.ok(home.includes('data-collapsed="0"'));
+  assert.ok(home.includes('hm-home-swap'));
+  assert.ok(!home.includes('.hm-home-card:hover::before'));
+  assert.ok(!home.includes('.hm-home-card:hover::after'));
+  assert.ok(home.includes('var(--hm-near-alpha, 0)'));
   assert.ok(home.includes('filter: blur(9px)'));
   assert.ok(home.includes('border-radius: 21px'));
   assert.ok(!home.includes('z-index: 25;'));
@@ -236,6 +241,7 @@ test('createHeatmapRenderer defaults to blue theme and renders both full dashboa
   assert.ok(full.includes('data-hm-day-pop'));
 
   const homeCollapsed = ui.buildHomeHtml(data, { themeName: 'blue', dark: false, collapsed: true });
+  assert.ok(homeCollapsed.includes('data-collapsed="1"'));
   assert.ok(!homeCollapsed.includes('完整看板 →'));
   assert.ok(!homeCollapsed.includes('(In '));
   assert.ok(!homeCollapsed.includes('<title>'));
@@ -251,10 +257,198 @@ test('estimateRequestCostUsd prioritizes Hydrogen family over generic Orchestrat
   assert.ok(Math.abs(orchWorkerCost - 3.75) < 1e-6);
 
   const ui = createHeatmapRenderer();
-  assert.equal(ui.version, 21);
+  assert.equal(ui.version, 24);
   assert.equal(typeof ui.cleanupHeatmapRoot, 'function');
   const src = createHeatmapRenderer.toString();
   assert.ok(src.includes('day.r ?? day.reqs'));
   assert.ok(src.includes('day.th ?? day.k'));
   assert.ok(src.includes('hmOrigZ'));
+  assert.ok(src.includes('_hmLastPointer'));
+  assert.ok(src.includes('applyNearAt'));
+  assert.ok(src.includes('buildHomeBodyHtml'));
+  assert.ok(src.includes('refreshPointer'));
+});
+
+test('renderHomeHeatmapCard toggles in place, survives background refresh and storage errors, cancels rAF, and cleans up detached hosts', () => {
+  const prevDoc = globalThis.document;
+  const prevLs = globalThis.localStorage;
+  const prevRaf = globalThis.requestAnimationFrame;
+  const prevCaf = globalThis.cancelAnimationFrame;
+  const prevMm = globalThis.matchMedia;
+
+  const makeEl = (tag = 'div', rect = { left: 100, top: 100, right: 600, bottom: 260, width: 500, height: 160 }) => {
+    const attrs = new Map();
+    const styles = new Map();
+    const listeners = new Map();
+    return {
+      tagName: tag,
+      hidden: tag === 'hm-day-pop' || tag === 'hm-hover-tip',
+      dataset: {},
+      title: '',
+      textContent: '',
+      offsetWidth: 200,
+      offsetHeight: 30,
+      isConnected: true,
+      style: {
+        setProperty(k, v) { styles.set(k, String(v)); },
+        getPropertyValue(k) { return styles.get(k) || ''; },
+        removeProperty(k) { styles.delete(k); },
+      },
+      setAttribute(k, v) { attrs.set(k, String(v)); },
+      getAttribute(k) { return attrs.has(k) ? attrs.get(k) : null; },
+      hasAttribute(k) { return attrs.has(k); },
+      removeAttribute(k) { attrs.delete(k); },
+      addEventListener(t, fn) {
+        if (!listeners.has(t)) listeners.set(t, new Set());
+        listeners.get(t).add(fn);
+      },
+      removeEventListener(t, fn) { listeners.get(t)?.delete(fn); },
+      dispatch(t, ev = {}) {
+        for (const fn of [...(listeners.get(t) || [])]) fn(ev);
+      },
+      getBoundingClientRect() { return rect; },
+      querySelectorAll() { return []; },
+      querySelector() { return null; },
+    };
+  };
+
+  const makeHomeRoot = () => {
+    let html = '';
+    const listeners = new Map();
+    const card = makeEl('card', { left: 100, top: 100, right: 600, bottom: 180, width: 500, height: 80 });
+    const body = makeEl('body', { left: 100, top: 130, right: 600, bottom: 180, width: 500, height: 50 });
+    const stats = makeEl('stats');
+    const detail = makeEl('detail');
+    const toggleBtn = makeEl('toggle');
+    const openBtn = makeEl('open');
+    const pop = makeEl('hm-day-pop');
+    const tip = makeEl('hm-hover-tip');
+    let bodyInner = '';
+    Object.defineProperty(body, 'innerHTML', {
+      get() { return bodyInner; },
+      set(v) { bodyInner = String(v); },
+    });
+    const host = { isConnected: true, dataset: {}, style: {} };
+    const root = {
+      host,
+      get innerHTML() { return html; },
+      set innerHTML(v) {
+        html = String(v);
+        const m = /class="hm-home-card"\s+data-collapsed="([01])"/.exec(html);
+        if (m) card.setAttribute('data-collapsed', m[1]);
+        else card.removeAttribute('data-collapsed');
+      },
+      addEventListener(t, fn) {
+        if (!listeners.has(t)) listeners.set(t, new Set());
+        listeners.get(t).add(fn);
+      },
+      removeEventListener(t, fn) { listeners.get(t)?.delete(fn); },
+      dispatch(t, ev = {}) {
+        for (const fn of [...(listeners.get(t) || [])]) fn(ev);
+      },
+      querySelector(sel) {
+        if (sel === '.hm-home-card') return card;
+        if (sel === '.hm-home-body') return body;
+        if (sel === '.hm-home-stats') return stats;
+        if (sel === '[data-hm-home-detail]') return detail;
+        if (sel === '[data-hm-home="toggle"]') return toggleBtn;
+        if (sel === '[data-hm-home="open"]') return openBtn;
+        if (sel === '[data-hm-day-pop]') return pop;
+        if (sel === '[data-hm-hover-tip]') return tip;
+        return null;
+      },
+      querySelectorAll() { return []; },
+    };
+    return { root, card, body, toggleBtn };
+  };
+
+  const docListeners = new Map();
+  let nextRafId = 1;
+  const pendingRafs = new Map();
+  const store = new Map();
+  let failStorageWrite = false;
+
+  globalThis.document = {
+    documentElement: {},
+    addEventListener(t, fn) {
+      if (!docListeners.has(t)) docListeners.set(t, new Set());
+      docListeners.get(t).add(fn);
+    },
+    removeEventListener(t, fn) { docListeners.get(t)?.delete(fn); },
+  };
+  globalThis.localStorage = {
+    getItem(k) { return store.has(k) ? store.get(k) : null; },
+    setItem(k, v) {
+      if (failStorageWrite) throw new Error('quota');
+      store.set(k, String(v));
+    },
+  };
+  globalThis.requestAnimationFrame = (cb) => {
+    const id = nextRafId++;
+    pendingRafs.set(id, cb);
+    return id;
+  };
+  globalThis.cancelAnimationFrame = (id) => { pendingRafs.delete(id); };
+  globalThis.matchMedia = () => ({ matches: true }); // exercise reduced-motion settle rAF cancellation
+
+  try {
+    const ui = createHeatmapRenderer();
+    const makeSnap = (genAt, hitRate) => ({
+      generatedAt: genAt,
+      sources: {
+        all: {
+          totals: { totalTokens: 1200, cacheHitRate: hitRate },
+          activity: { currentStreak: 2, activeDays: 2, peakDay: { d: '2026-11-26', t: 1200 } },
+          weeks52: { days: [{ d: '2026-11-26', t: 1200, i: 100, c: 900, o: 200, n: 1, l: 3 }] },
+        },
+      },
+    });
+
+    const { root, card, body, toggleBtn } = makeHomeRoot();
+    // 1. Render expanded with non-numeric string cacheHitRate ("88.5") -> must coerce cleanly without throwing.
+    ui.renderHomeHeatmapCard(root, makeSnap(1, '88.5'));
+    assert.ok(root.innerHTML.includes('88.5%'));
+    assert.equal(card.getAttribute('data-collapsed'), '0');
+
+    // 2. Rapid double-click toggle preserves DOM nodes & flips state twice cleanly; cancel settle rAF on cleanup.
+    toggleBtn.dispatch('click', { clientX: 550, clientY: 115 });
+    assert.equal(card.getAttribute('data-collapsed'), '1');
+    toggleBtn.dispatch('click', { clientX: 550, clientY: 115 });
+    assert.equal(card.getAttribute('data-collapsed'), '0');
+
+    // 3. Background polling snapshot refresh (generatedAt=2) updates body in-place without replacing card/toggleBtn.
+    ui.renderHomeHeatmapCard(root, makeSnap(2, '91.2'));
+    assert.strictEqual(root.querySelector('.hm-home-card'), card);
+    assert.strictEqual(root.querySelector('[data-hm-home="toggle"]'), toggleBtn);
+    assert.ok(body.innerHTML.includes('91.2%'));
+
+    // 4. Failing localStorage.setItem keeps in-memory fallback so next poll does not revert toggle.
+    failStorageWrite = true;
+    toggleBtn.dispatch('click', { clientX: 550, clientY: 115 });
+    assert.equal(card.getAttribute('data-collapsed'), '1');
+    ui.renderHomeHeatmapCard(root, makeSnap(3, '91.2'));
+    assert.equal(card.getAttribute('data-collapsed'), '1');
+    assert.ok(pendingRafs.size > 0);
+
+    // 5. cleanupHeatmapRoot cancels pending settle rAF & removes all document listeners.
+    ui.cleanupHeatmapRoot(root);
+    assert.equal(pendingRafs.size, 0);
+    assert.equal(docListeners.get('click')?.size || 0, 0);
+    assert.equal(docListeners.get('pointermove')?.size || 0, 0);
+
+    // 6. Detached host self-cleans leaked document.click listener when clicked.
+    const detached = makeHomeRoot();
+    ui.renderHomeHeatmapCard(detached.root, makeSnap(4, 50));
+    assert.equal(docListeners.get('click')?.size || 0, 1);
+    detached.root.host.isConnected = false;
+    for (const fn of [...(docListeners.get('click') || [])]) fn({ type: 'click' });
+    assert.equal(docListeners.get('click')?.size || 0, 0);
+    assert.equal(docListeners.get('pointermove')?.size || 0, 0);
+  } finally {
+    globalThis.document = prevDoc;
+    globalThis.localStorage = prevLs;
+    globalThis.requestAnimationFrame = prevRaf;
+    globalThis.cancelAnimationFrame = prevCaf;
+    globalThis.matchMedia = prevMm;
+  }
 });

@@ -414,6 +414,7 @@ html[data-agy-opt-code="1"] pre[data-agy-opt-folded="1"] {
   let currentPrefs = { ...DEFAULT_OPTICAL };
   let active = false;
   let pointerBound = false;
+  let lastPointer = null;
   let onDocPointerMove = null;
   let onDocPointerLeave = null;
   let onDocInput = null;
@@ -448,9 +449,61 @@ html[data-agy-opt-code="1"] pre[data-agy-opt-folded="1"] {
   function clearNearState(cardEl) {
     if (!cardEl) return;
     cardEl.style.setProperty('--agy-near-alpha', '0');
+    cardEl.style.removeProperty('--agy-px');
+    cardEl.style.removeProperty('--agy-py');
     cardEl.removeAttribute('data-agy-opt-near');
     if (cardEl.matches?.('[data-testid="queued-messages-card"]') && cardEl.parentElement) {
       cardEl.parentElement.style.setProperty('--agy-near-alpha', '0');
+      cardEl.parentElement.style.removeProperty('--agy-px');
+      cardEl.parentElement.style.removeProperty('--agy-py');
+    }
+  }
+
+  function updateTrackedNear(clientX, clientY) {
+    if (typeof document === 'undefined') return;
+    const trackedSelector = '.surface-composer, [data-testid="queued-messages-card"]';
+    const PROXIMITY_RADIUS = 120;
+    const setIfChanged = (el, prop, val) => {
+      if (el.style.getPropertyValue(prop) !== val) el.style.setProperty(prop, val);
+    };
+    for (const cardEl of document.querySelectorAll(trackedSelector)) {
+      const r = cardEl.getBoundingClientRect();
+      if (r.width <= 0 || r.height <= 0) {
+        if (cardEl.hasAttribute('data-agy-opt-near')) clearNearState(cardEl);
+        continue;
+      }
+      const dx = Math.max(r.left - clientX, 0, clientX - r.right);
+      const dy = Math.max(r.top - clientY, 0, clientY - r.bottom);
+      const dist = Math.hypot(dx, dy);
+      if (dist < PROXIMITY_RADIUS) {
+        const alpha = Math.pow(1 - dist / PROXIMITY_RADIUS, 1.35);
+        const px = Math.round(clientX - r.left) + 'px';
+        const py = Math.round(clientY - r.top) + 'px';
+        const aStr = alpha.toFixed(3);
+        setIfChanged(cardEl, '--agy-px', px);
+        setIfChanged(cardEl, '--agy-py', py);
+        setIfChanged(cardEl, '--agy-near-alpha', aStr);
+        if (cardEl.matches?.('[data-testid="queued-messages-card"]') && cardEl.parentElement) {
+          setIfChanged(cardEl.parentElement, '--agy-px', px);
+          setIfChanged(cardEl.parentElement, '--agy-py', py);
+          setIfChanged(cardEl.parentElement, '--agy-near-alpha', aStr);
+        }
+        if (cardEl.getAttribute('data-agy-opt-near') !== '1') {
+          cardEl.setAttribute('data-agy-opt-near', '1');
+        }
+      } else if (cardEl.hasAttribute('data-agy-opt-near')) {
+        clearNearState(cardEl);
+      }
+    }
+  }
+
+  function refreshPointer(pt) {
+    if (!pointerBound || typeof document === 'undefined') return;
+    if (pt && Number.isFinite(pt.x) && Number.isFinite(pt.y)) {
+      lastPointer = { x: pt.x, y: pt.y };
+    }
+    if (lastPointer) {
+      updateTrackedNear(lastPointer.x, lastPointer.y);
     }
   }
 
@@ -465,6 +518,7 @@ html[data-agy-opt-code="1"] pre[data-agy-opt-folded="1"] {
         document.removeEventListener('input', onDocInput, true);
         pointerBound = false;
       }
+      lastPointer = null;
       if (typingTimer) {
         clearTimeout(typingTimer);
         typingTimer = 0;
@@ -482,9 +536,9 @@ html[data-agy-opt-code="1"] pre[data-agy-opt-folded="1"] {
     }
     if (pointerBound) return;
     pointerBound = true;
-    const PROXIMITY_RADIUS = 120;
 
     onDocPointerMove = (e) => {
+      lastPointer = { x: e.clientX, y: e.clientY };
       const menu = e.target?.closest?.('.surface-glass, [role="menu"], [role="listbox"], [data-slot="popover-content"], [data-slot="dropdown-menu-content"]');
       if (menu) {
         const mr = menu.getBoundingClientRect();
@@ -493,38 +547,11 @@ html[data-agy-opt-code="1"] pre[data-agy-opt-folded="1"] {
           menu.style.setProperty('--agy-my', Math.round(e.clientY - mr.top) + 'px');
         }
       }
-      for (const cardEl of document.querySelectorAll(trackedSelector)) {
-        const r = cardEl.getBoundingClientRect();
-        if (r.width <= 0 || r.height <= 0) {
-          if (cardEl.hasAttribute('data-agy-opt-near')) clearNearState(cardEl);
-          continue;
-        }
-        const dx = Math.max(r.left - e.clientX, 0, e.clientX - r.right);
-        const dy = Math.max(r.top - e.clientY, 0, e.clientY - r.bottom);
-        const dist = Math.hypot(dx, dy);
-        if (dist < PROXIMITY_RADIUS) {
-          const alpha = Math.pow(1 - dist / PROXIMITY_RADIUS, 1.35);
-          const px = Math.round(e.clientX - r.left) + 'px';
-          const py = Math.round(e.clientY - r.top) + 'px';
-          const aStr = alpha.toFixed(3);
-          cardEl.style.setProperty('--agy-px', px);
-          cardEl.style.setProperty('--agy-py', py);
-          cardEl.style.setProperty('--agy-near-alpha', aStr);
-          if (cardEl.matches?.('[data-testid="queued-messages-card"]') && cardEl.parentElement) {
-            cardEl.parentElement.style.setProperty('--agy-px', px);
-            cardEl.parentElement.style.setProperty('--agy-py', py);
-            cardEl.parentElement.style.setProperty('--agy-near-alpha', aStr);
-          }
-          if (cardEl.getAttribute('data-agy-opt-near') !== '1') {
-            cardEl.setAttribute('data-agy-opt-near', '1');
-          }
-        } else if (cardEl.hasAttribute('data-agy-opt-near')) {
-          clearNearState(cardEl);
-        }
-      }
+      updateTrackedNear(e.clientX, e.clientY);
     };
 
     onDocPointerLeave = () => {
+      lastPointer = null;
       for (const cardEl of document.querySelectorAll(trackedSelector)) {
         if (cardEl.hasAttribute('data-agy-opt-near')) {
           clearNearState(cardEl);
@@ -792,15 +819,16 @@ html[data-agy-opt-code="1"] pre[data-agy-opt-folded="1"] {
   }
 
   return {
-    version: 11,
+    version: 13,
     DEFAULT_OPTICAL,
     LIGHT_PALETTES,
     DARK_PALETTES,
     buildCss,
     apply,
     dispose,
+    refreshPointer,
     isActive: () => active,
   };
 }
 
-export const getOpticalThemeScript = () => `if (globalThis.__agyPrismOptical?.version !== 11) globalThis.__agyPrismOptical = (${createOpticalThemeEngine.toString()})();`;
+export const getOpticalThemeScript = () => `if (globalThis.__agyPrismOptical?.version !== 13) globalThis.__agyPrismOptical = (${createOpticalThemeEngine.toString()})();`;
