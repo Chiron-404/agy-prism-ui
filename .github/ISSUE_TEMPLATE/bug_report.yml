@@ -1,0 +1,47 @@
+name: Bug 反馈 / Bug Report
+description: 报告样式异常、数据不准、安装失败或报错问题 / Report a visual, telemetry, install, or runtime bug
+labels: ["bug"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: 问题描述 / Summary
+      description: 简述你遇到的问题以及期望行为 / Briefly describe the issue and expected behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤 / Steps to reproduce
+      description: 如何触发这个问题？ / How can this be reproduced?
+      value: |
+        1. 
+        2. 
+        3. 
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: 系统与版本 / Environment
+      description: 例如：Windows 11 / Antigravity x.y.z / Agy Prism UI v2.0.0
+      placeholder: Windows 11, Antigravity ..., Agy Prism UI v2.0.0
+    validations:
+      required: true
+  - type: dropdown
+    id: cdp
+    attributes:
+      label: 调试端口状态 / Remote debugging port (`--remote-debugging-port=0`)
+      options:
+        - 已开启 / Enabled
+        - 未开启 / Disabled
+        - 不确定 / Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 截图或日志 / Screenshots or logs
+      description: 可粘贴截图或错误信息（请先遮挡个人路径、账号邮箱或敏感对话标题 / Please redact private paths, emails, or chat titles）.
+    validations:
+      required: false

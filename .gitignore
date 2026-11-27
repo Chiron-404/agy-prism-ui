@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
+*.tmp
+
+# Local promotional animation project
+/promo/
+
+# Local preview renders and scratch files
+/tmp/
+/.remotion/
+
+# Internal task checklist (kept local only)
+/TASKS.md

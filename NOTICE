@@ -1,0 +1,64 @@
+Agy Prism UI (`agy-prism-ui`)
+Copyright (C) 2026 IMMO-CHIRON (https://github.com/Chiron-404)
+
+This project is licensed under the GNU General Public License v3.0 (GPL-3.0).
+See the `LICENSE` file in the repository root for the full license text, and
+`THIRD_PARTY_NOTICES.md` for full upstream license texts and copyright notices.
+
+================================================================================
+PROVENANCE, NON-ORIGINALITY & AI-ASSISTED DERIVATIVE DEVELOPMENT NOTICE
+================================================================================
+
+`Agy Prism UI` is an AI-assisted derivative / modified distribution, NOT an
+independent original project built from scratch. Substantial core architecture
+and implementation code are derived from upstream open-source work, while new
+features and visual/telemetry enhancements were adapted or reimplemented with
+AI coding assistance under the direction of IMMO-CHIRON.
+
+This project is an independent community modification and is NOT an official
+release of, nor endorsed by, any of the upstream projects or authors listed
+below.
+
+================================================================================
+UPSTREAM AUTHORS & CREDITS
+================================================================================
+
+1. Lumidarin — `agy-capsule`
+   - Repository: https://github.com/Lumidarin/agy-capsule
+   - Copyright:  Copyright (c) 2026 Lumidarin
+   - License:    MIT License (preserved in `THIRD_PARTY_NOTICES.md`)
+   - Role:       Primary upstream codebase (sidecar telemetry architecture,
+                 SQLite/protobuf parsing, CDP footer injection transport, quota
+                 & cache capsules, multi-language presentation runtime, settings
+                 store, and Windows/Unix install & self-reload scripts), modified
+                 and redistributed here as part of this GPL-3.0 work (along with
+                 references to PR #1 by @z21100644 and PR #2 by @Krwaby123).
+
+2. RMvdesi — `obsidian-prism`
+   - Repository: https://github.com/RMvdesi/obsidian-prism
+   - Copyright:  Copyright (C) 2026 RMvdesi
+   - License:    GNU General Public License v3.0 (`GPL-3.0-only`)
+   - Role:       Visual & optical UI design inspiration (daylight Crystal /
+                 Alabaster and dark Obsidian / Warm Charcoal palettes, smoked-
+                 glass surfaces, Gemini prism halo marquee, streaming ink-fade
+                 motion, and sticky/foldable code blocks). Clean-room
+                 implemented in `optical_theme.mjs`; no source files copied.
+                 (`prism-periodic-console` / Channel 8 All-Rights-Reserved
+                 features are NOT included.)
+
+3. rayeesoft — `context-lens`
+   - Repository: https://github.com/rayeesoft/context-lens
+   - Copyright:  Copyright (c) 2026 rayeesoft
+   - License:    MIT License
+   - Role:       Functional & visualization design inspiration for Insights
+                 (52-week token usage heatmap, daily activity/cost breakdowns,
+                 and local activity strip layout). Clean-room implemented in
+                 `heatmap.mjs` and `heatmap_ui.mjs`; no source files copied.
+
+================================================================================
+AI ASSISTANCE & CODE REVIEW
+================================================================================
+
+- Google Antigravity (Gemini): AI-assisted development, clean-room UI/telemetry
+  implementation, automated tests, and repository tooling.
+- OpenAI Codex / ChatGPT: Independent code review and edge-case robustness audit.

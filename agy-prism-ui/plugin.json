@@ -1,0 +1,7 @@
+{
+  "name": "agy-prism-ui",
+  "displayName": "Agy Prism UI",
+  "version": "2.0.0",
+  "description": "Optical UI, Prism halo marquee, Prism Lens real-time telemetry, Overview Telemetry, and Insights activity dashboard for Antigravity Desktop.",
+  "logo": "logo.svg"
+}

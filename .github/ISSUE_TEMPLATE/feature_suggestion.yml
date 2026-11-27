@@ -1,0 +1,25 @@
+name: 功能建议与讨论 / Feature Suggestion
+description: 提出新想法、交互优化或视觉建议（代码改动请直接开 PR）/ Share ideas, UX suggestions, or design feedback
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 想解决什么痛点？ / What problem does this solve?
+      description: 说明目前体验不足的地方或使用场景 / Describe the current pain point or use case.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建议方案 / Proposed idea
+      description: 描述你期望的效果或交互方式 / Describe your suggested design or behavior.
+    validations:
+      required: true
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: 设计理念确认 / Design philosophy note
+      options:
+        - label: 我了解 Agy Prism UI 偏向开箱即用、保持简洁克制的界面设计 / I understand Agy Prism UI prefers an uncluttered, out-of-the-box interface
+          required: false
