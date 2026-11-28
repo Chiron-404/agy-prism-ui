@@ -89,9 +89,9 @@ test('clicking context footer pill jumps to Overview telemetry and old sidebar j
   assert.ok(ovSrc.includes("titleEl.textContent = 'Telemetry'"));
   assert.ok(!ovSrc.includes('会话遥测'));
   assert.ok(!ovSrc.includes('aria-expanded="true"] .ov-title'));
-  assert.ok(!ovSrc.includes('.ov-head:hover {\n  background:'));
-  assert.ok(ovSrc.includes('.ov-head:hover .ov-title,\n.ov-head:focus-visible .ov-title {\n  opacity: 1;\n}'));
-  assert.ok(ovSrc.includes('@media (hover: hover) {\n  .ov-chev { opacity: 0; }\n}'));
+  assert.ok(!/\.ov-head:hover\s*\{\s*background:/.test(ovSrc));
+  assert.match(ovSrc, /\.ov-head:hover\s+\.ov-title,\s*\.ov-head:focus-visible\s+\.ov-title\s*\{\s*opacity:\s*1;\s*\}/);
+  assert.match(ovSrc, /@media\s*\(hover:\s*hover\)\s*\{\s*\.ov-chev\s*\{\s*opacity:\s*0;\s*\}\s*\}/);
   assert.ok(ovSrc.includes('transform: rotate(90deg);'));
   assert.ok(!/\.ov-chev\s*\{[^}]*margin-left:\s*auto/.test(ovSrc));
   assert.ok(!ovSrc.includes('@media (min-width: 360px)'));
