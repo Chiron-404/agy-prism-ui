@@ -617,6 +617,10 @@ export function createOverviewRenderer() {
 }
 .hist-mtag[data-phase="plan"] { background: rgba(99, 102, 241, 0.16); color: light-dark(#4f46e5, #818cf8); }
 .hist-mtag[data-phase="execute"] { background: rgba(16, 185, 129, 0.16); color: light-dark(#059669, #34d399); }
+.ov-ext-root { display: flex; flex-direction: column; gap: 8px; width: 100%; min-width: 0; }
+.ov-ext-root[hidden] { display: none; }
+.ov-ext-title { font-size: 11.5px; font-weight: 500; margin-bottom: 4px; color: var(--foreground, #0d1321); }
+.ov-ext-body { font-size: 11px; color: var(--muted-foreground, #64748b); word-break: break-word; }
 `;
 
   function fmtK(n) {
@@ -642,9 +646,9 @@ export function createOverviewRenderer() {
       shadow = host.attachShadow({ mode: 'open' });
     }
     let wrap = shadow.getElementById('ov-telemetry-wrap');
-    if (!wrap || wrap.dataset.ovVer !== '6') {
+    if (!wrap || wrap.dataset.ovVer !== '7') {
       shadow.innerHTML = `<style>${CSS}</style>`
-        + `<div class="ov-wrap" id="ov-telemetry-wrap" data-ov-ver="6">`
+        + `<div class="ov-wrap" id="ov-telemetry-wrap" data-ov-ver="7">`
         + `<button type="button" class="ov-head" id="ov-toggle-btn" aria-expanded="false">`
         + `<span class="ov-title" id="ov-title">Telemetry</span>`
         + `<span class="ov-badge" id="ov-badge"></span>`
@@ -677,6 +681,7 @@ export function createOverviewRenderer() {
         + `${presentation.turnMetricsMarkup()}`
         + `</section>`
         + `<section class="ov-card stats-history" id="ov-history-root" hidden></section>`
+        + `<div id="ov-ext-root" class="ov-ext-root" hidden></div>`
         + `</div>`
         + `</div>`;
       wrap = shadow.getElementById('ov-telemetry-wrap');
@@ -777,13 +782,49 @@ export function createOverviewRenderer() {
     shadow.getElementById('ov-val-out-pct').textContent = pctStr(out);
 
     presentation.renderSidebarHistory(shadow.getElementById('ov-history-root'), d.history, maxCtx, labels, Date.now(), options.convPath || '');
+    const extRoot = shadow.getElementById('ov-ext-root');
+    if (extRoot) {
+      const sections = options.enableExtensions !== false
+        ? (globalThis.__agyPrismExt?.getOverviewSections?.() || [])
+        : [];
+      if (!sections.length) {
+        extRoot.hidden = true;
+        extRoot.replaceChildren();
+      } else {
+        const frag = document.createDocumentFragment();
+        const ctxArg = { labels, prefs, convPath: options.convPath || '', expanded };
+        for (const sec of sections) {
+          try {
+            const out = sec.render(d, ctxArg);
+            if (!out) continue;
+            const card = document.createElement('section');
+            card.className = 'ov-card';
+            card.dataset.ovExtId = sec.id;
+            if (sec.title) {
+              const titleDiv = document.createElement('div');
+              titleDiv.className = 'ov-ext-title';
+              titleDiv.textContent = sec.title;
+              card.appendChild(titleDiv);
+            }
+            const bodyDiv = document.createElement('div');
+            bodyDiv.className = 'ov-ext-body';
+            if (typeof Node !== 'undefined' && out instanceof Node) bodyDiv.appendChild(out);
+            else bodyDiv.innerHTML = String(out);
+            card.appendChild(bodyDiv);
+            frag.appendChild(card);
+          } catch {}
+        }
+        extRoot.replaceChildren(frag);
+        extRoot.hidden = extRoot.childElementCount === 0;
+      }
+    }
     return true;
   }
 
   return {
-    version: 6,
+    version: 7,
     renderOverviewTelemetry,
   };
 }
 
-export const getOverviewRendererScript = () => `if (globalThis.__agyPrismOverviewUI?.version !== 6) globalThis.__agyPrismOverviewUI = (${createOverviewRenderer.toString()})();`;
+export const getOverviewRendererScript = () => `if (globalThis.__agyPrismOverviewUI?.version !== 7) globalThis.__agyPrismOverviewUI = (${createOverviewRenderer.toString()})();`;

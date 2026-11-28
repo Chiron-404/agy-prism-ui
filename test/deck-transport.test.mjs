@@ -81,7 +81,7 @@ test('clicking context footer pill jumps to Overview telemetry and old sidebar j
   assert.ok(!UI_HTML.includes('agy-prism-ui:select-view'));
 
   const overview = createOverviewRenderer();
-  assert.equal(overview.version, 6);
+  assert.equal(overview.version, 7);
   const ovSrc = createOverviewRenderer.toString();
   assert.ok(ovSrc.includes('ov-context-card'));
   assert.ok(ovSrc.includes('ov-history-root'));

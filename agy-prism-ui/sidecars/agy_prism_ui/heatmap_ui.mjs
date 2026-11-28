@@ -2254,8 +2254,43 @@ ${getDayPopCss(accent, dark)}
     });
   }
 
+  function registerTheme(id, themeDef) {
+    const key = String(id || '').trim();
+    if (!/^[a-z0-9][a-z0-9._-]{0,63}$/i.test(key) || !Array.isArray(themeDef?.light) || themeDef.light.length !== 6 || !Array.isArray(themeDef?.dark) || themeDef.dark.length !== 6) {
+      return false;
+    }
+    THEMES[key] = {
+      label: String(themeDef.label || key),
+      swatch: String(themeDef.swatch || `linear-gradient(135deg, ${themeDef.light[2]} 0%, ${themeDef.light[5]} 100%)`),
+      accent: String(themeDef.accent || themeDef.light[4]),
+      accentDark: String(themeDef.accentDark || themeDef.dark[4]),
+      light: themeDef.light.slice(0, 6).map(String),
+      dark: themeDef.dark.slice(0, 6).map(String),
+      barStops: Array.isArray(themeDef.barStops) && themeDef.barStops.length === 3 ? themeDef.barStops.slice() : [themeDef.light[2], themeDef.light[4], themeDef.light[5]],
+      barStopsDark: Array.isArray(themeDef.barStopsDark) && themeDef.barStopsDark.length === 3 ? themeDef.barStopsDark.slice() : [themeDef.dark[2], themeDef.dark[4], themeDef.dark[5]],
+      monthlyBar: String(themeDef.monthlyBar || themeDef.light[3]),
+      monthlyBarDark: String(themeDef.monthlyBarDark || themeDef.dark[3]),
+      curve: String(themeDef.curve || themeDef.light[5]),
+      curveDark: String(themeDef.curveDark || themeDef.dark[5]),
+    };
+    return true;
+  }
+
+  function unregisterTheme(id) {
+    const key = String(id || '').trim();
+    if (!key || ['blue', 'sunset', 'green', 'purple', 'aurora', 'ocean'].includes(key)) return false;
+    return delete THEMES[key];
+  }
+
+  try {
+    const extThemes = globalThis.__agyPrismExt?.getHeatmapThemes?.();
+    if (extThemes && typeof extThemes === 'object') {
+      for (const [k, def] of Object.entries(extThemes)) registerTheme(k, def);
+    }
+  } catch {}
+
   return {
-    version: 26,
+    version: 27,
     SUPPORTED_HM_LOCALES,
     resolveHmLang,
     hmT,
@@ -2263,6 +2298,8 @@ ${getDayPopCss(accent, dark)}
     DEFAULT_THEME,
     fmtTok,
     fmtUsd,
+    registerTheme,
+    unregisterTheme,
     buildDynamicPalette,
     buildFullHtml,
     buildHomeHtml,
@@ -2272,4 +2309,4 @@ ${getDayPopCss(accent, dark)}
   };
 }
 
-export const getHeatmapRendererScript = () => `if (globalThis.__agyPrismHeatmapUI?.version !== 26) globalThis.__agyPrismHeatmapUI = (${createHeatmapRenderer.toString()})();`;
+export const getHeatmapRendererScript = () => `if (globalThis.__agyPrismHeatmapUI?.version !== 27) globalThis.__agyPrismHeatmapUI = (${createHeatmapRenderer.toString()})();`;

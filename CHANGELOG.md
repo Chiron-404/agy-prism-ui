@@ -6,6 +6,22 @@ This file documents user-facing feature additions, visual refinements, and stabi
 
 ---
 
+## [v2.0.3-dev](https://github.com/Chiron-404/agy-prism-ui/releases/tag/v2.0.3-dev) — 2026-11-28 (Dev Channel)
+
+### 中文
+
+- **恢复并增强侧栏设置页**：在 `… → Extensions → Agy Prism UI` 中开放「统计 / 设置」双页切换，支持界面外观、上下文列排序、更新通道检测与一键热更新操作。
+- **扩展总线与高可自定义性**：新增运行时扩展接口 `window.__agyPrismExt`（支持注册自定义底栏透镜、Overview 卡片、Insights 热力图色盘、受控样式与数据监听），并支持注入自定义 CSS、调整 Overview 宽度与底栏缩放比例。
+- **AI 开发 Prompt 一键复制**：设置页内置「复制 AI 开发 Prompt」按钮，可携带当前安装路径、接口说明与热重载指令，方便其他 AI Agent 直接理解并二次开发插件。
+
+### English
+
+- **Restored & Enhanced Sidebar Settings Tab**: Re-enabled the **Statistics / Settings** switcher in `… → Extensions → Agy Prism UI` with appearance controls, context field ordering, and integrated updater controls.
+- **Runtime Extension Bus & High Customizability**: Added `globalThis.__agyPrismExt` (custom lenses, Overview cards, Insights heatmap themes, managed CSS, and snapshot/heatmap hooks) alongside custom `custom.css` injection, Overview width tuning, and composer font scaling.
+- **One-Click AI Agent Prompt**: Added a **Copy AI Dev Prompt** button inside Settings exporting the live install path, extension API, and hot-reload workflow for external AI coding agents.
+
+---
+
 ## [v2.0.3](https://github.com/Chiron-404/agy-prism-ui/releases/tag/v2.0.3) — 2026-11-28
 
 ### 中文

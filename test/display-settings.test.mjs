@@ -427,8 +427,8 @@ test('help dots, disabled option controls, turn preview short labels, and convId
   assert.match(UI_HTML, /data-preview-group="turn"[^]*?data-turn-row="requests"[^]*?class="turn-bar-short"/);
   assert.match(UI_HTML, /optionCard\.dataset\.checked === 'false'/);
   assert.match(UI_HTML, /detailPop\.dataset\.open === 'false'/);
-  assert.ok(UI_HTML.includes('<div class="sidebar-nav" hidden>'));
-  assert.ok(UI_HTML.includes('.sidebar-nav[hidden] { display: none !important; }'));
+  assert.ok(UI_HTML.includes('<div class="sidebar-nav">'));
+  assert.ok(UI_HTML.includes("if (view !== 'stats' && view !== 'settings') return;"));
   const { inspectConversation } = await import('../agy-prism-ui/sidecars/agy_prism_ui/server.mjs');
   const unsafe = await inspectConversation('../../nonexistent', true);
   assert.equal(unsafe.contextTokens, 0);

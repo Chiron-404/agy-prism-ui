@@ -20,6 +20,8 @@ agy-prism-ui/
     ├── heatmap.mjs                          # Multi-source SQLite aggregator & dynamic color grading
     ├── heatmap_ui.mjs                       # Insights Home card, 52-week dashboard & Update popover
     ├── updater.mjs                          # 3-channel GitHub Releases checker & transactional hot-updater
+    ├── extensions.mjs                       # Dev channel runtime extension bus (globalThis.__agyPrismExt, v1)
+    ├── dev_config.mjs                       # Dev custom config, CSS sanitizer & AI prompt generator
     ├── ui.mjs                               # Shared formatting, i18n dictionaries & history renderer
     ├── settings.mjs                         # Atomic settings store (~/.gemini/config/agy-prism-ui/settings.json)
     ├── model_routing.mjs                    # Orchestrator Plan/Execute/Direct routing & effort parser
@@ -48,6 +50,14 @@ agy-prism-ui/
    - `stable`: GitHub Release with `prerelease: false` & tag `vX.Y.Z` (published as `Latest`).
    - `preview`: GitHub Release with `prerelease: true` & tag `vX.Y.Z-beta.N` / `-rc.N`.
    - `dev`: GitHub Release with `prerelease: true` & tag `vX.Y.Z-dev` / `-dev.N` (built from the `dev` branch).
+5. **Dev Extension Bus (`extensions.mjs`, `globalThis.__agyPrismExt`, `version: 1`) & Dev APIs (`dev_config.mjs`)**:
+   - `registerLens(id, { render(data, ctx), order, position })`: add a custom pill inside the composer footer strip (`position`: `'start' | 'end'`).
+   - `registerOverviewSection(id, { title, render(data, ctx), order })`: append a custom section card inside `Overview -> Telemetry` (`#ov-ext-root`).
+   - `registerHeatmapTheme(id, { label, light: [6 hexes], dark: [6 hexes], ... })`: register a dynamic Insights heatmap palette.
+   - `registerStyle(id, cssText)`: inject managed `<style data-agy-ext-style="...">` cleaned up on `unregister(id)` / `dispose()`.
+   - `onSnapshot(fn)` / `onHeatmap(fn)`: subscribe to live telemetry/heatmap updates (returns unsubscribe callback).
+   - `unregister(id)` / `list()` / `dispose()`.
+   - Dev Sidecar endpoints (`POST` requires `X-Sidecar-Token` header or `token` query): `GET/POST /api/dev/config` (`overviewWidthPx` `0` or `320..520`, `uiFontScale` `0.85..1.25`, `customCssEnabled`, `insightsDefaultExpanded`, `enableUserExtensions`), `GET/POST /api/dev/custom-css`, `GET /api/dev/prompt`.
 
 ---
 
@@ -73,8 +83,8 @@ git diff --check
 You are working on **Agy Prism UI** (`agy-prism-ui`), a zero-dependency Node.js ESM Sidecar + CDP-injected UI plugin for Antigravity Desktop.
 
 Key rules before editing:
-1. Read `AI_DEV_GUIDE.md` first. Any code inside `createPresentation` (`ui.mjs`), `createOpticalThemeEngine` (`optical_theme.mjs`), `createOverviewRenderer` (`overview_ui.mjs`), or `createHeatmapRenderer` (`heatmap_ui.mjs`) is serialized with `.toString()` into Electron — keep all helpers inside those factories and bump their `version` + `get*Script()` guard when changed.
-2. Never widen `[data-testid="overview-panel"]` beyond native `320px`, never add external npm dependencies, and keep `.db` reads strictly read-only.
+1. Read `AI_DEV_GUIDE.md` first. Any code inside `createPresentation` (`ui.mjs`), `createOpticalThemeEngine` (`optical_theme.mjs`), `createOverviewRenderer` (`overview_ui.mjs`), `createHeatmapRenderer` (`heatmap_ui.mjs`), or `createExtensionBus` (`extensions.mjs`) is serialized with `.toString()` into Electron — keep all helpers inside those factories and bump their `version` + `get*Script()` guard when changed.
+2. On stable, never widen `[data-testid="overview-panel"]` beyond native `320px`; on `dev`, respect `dev_config.json` overrides via `/api/dev/config` & `/api/dev/custom-css` and extend UI via `globalThis.__agyPrismExt` (`registerLens`, `registerOverviewSection`, `registerHeatmapTheme`, `registerStyle`, `onSnapshot`, `onHeatmap`). Never add external npm dependencies, and keep `.db` reads strictly read-only.
 3. Keep `settings.mjs`, `ui.mjs` dictionaries (`en`, `zh-CN`, `zh-TW`), and `server.mjs` controls in sync.
 4. After editing, run `node --test "test/*.test.mjs"` (require 0 failures) and sync locally with `scripts/manage-plugin.ps1 -Action install` (or `./install.sh` on macOS/Linux) to hot-reload.
 ```

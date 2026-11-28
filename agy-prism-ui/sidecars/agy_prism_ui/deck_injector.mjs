@@ -8,6 +8,7 @@ import { createPresentation, getPresentationScript } from './ui.mjs';
 import { getHeatmapRendererScript } from './heatmap_ui.mjs';
 import { getOpticalThemeScript } from './optical_theme.mjs';
 import { getOverviewRendererScript } from './overview_ui.mjs';
+import { getExtensionBusScript } from './extensions.mjs';
 
 const { escapeHtml, formatTokens, appearance, formatReset, cacheView } = createPresentation();
 
@@ -77,11 +78,11 @@ function pageMount(d) {
   }
 
   // Upgrade or initialize DOM structure in-place
-  if (root.getAttribute('data-deck-ver') !== '123') {
+  if (root.getAttribute('data-deck-ver') !== '124') {
     release(root);
     root._pinnedGroup = null;
     root.removeAttribute('data-pinned');
-    root.setAttribute('data-deck-ver', '123');
+    root.setAttribute('data-deck-ver', '124');
     root._speedActivity = null;
     root._motionPrev = null;
     root.style.cssText = [
@@ -690,6 +691,7 @@ function pageMount(d) {
           <div class="dk-error-diagnostic" data-request-error="diagnostic"></div>
         </div>
       </div>
+      <span class="dk-ext-lenses" data-el="extLenses" style="display:inline-flex;align-items:center;gap:4px"></span>
     `;
 
     // Only native layout integration stays outside the shadow boundary.
@@ -1362,6 +1364,19 @@ function pageMount(d) {
   }
   presentation.apply(root, d.prefs);
   applyModelQuota();
+  const extLensesEl = root.querySelector('[data-el="extLenses"]');
+  if (extLensesEl) {
+    const extLenses = d.enableExtensions !== false ? (globalThis.__agyPrismExt?.getLenses?.() || []) : [];
+    if (!extLenses.length) {
+      if (extLensesEl.innerHTML) extLensesEl.replaceChildren();
+    } else {
+      const html = extLenses.map(l => {
+        try { return String(l.render(d, { escapeHtml }) || ''); }
+        catch { return ''; }
+      }).join('');
+      if (extLensesEl.innerHTML !== html) extLensesEl.innerHTML = html;
+    }
+  }
 
   root._fitPanelHeights = () => {
     // Only visible capsules participate in matched panel height.
@@ -1597,6 +1612,46 @@ function installRuntime(owner, hash) {
   let updateStatus = null;
   let pendingUpdateAction = null;
   let updateActionSeq = 0;
+  let devConfig = null;
+  let customCss = '';
+
+  const applyDevCustomization = () => {
+    if (disposed) return;
+    let cssEl = document.getElementById('agy-prism-custom-css');
+    const wantCss = Boolean(devConfig?.customCssEnabled && customCss);
+    if (wantCss) {
+      if (!cssEl && document.head) {
+        cssEl = document.createElement('style');
+        cssEl.id = 'agy-prism-custom-css';
+        document.head.appendChild(cssEl);
+      }
+      if (cssEl && cssEl.textContent !== customCss) cssEl.textContent = customCss;
+    } else {
+      cssEl?.remove?.();
+    }
+
+    let devEl = document.getElementById('agy-prism-dev-overrides');
+    const w = Number(devConfig?.overviewWidthPx) || 0;
+    const scale = Number(devConfig?.uiFontScale) || 1;
+    const rules = [];
+    if (w >= 320 && w <= 520) {
+      rules.push(`.animate-overview-panel:has([data-testid="overview-panel"]), [data-testid="overview-panel"] { width: min(${w}px, calc(100vw - 16px)) !important; max-width: min(${w}px, calc(100vw - 16px)) !important; }`);
+    }
+    if (Math.abs(scale - 1) >= 0.01) {
+      rules.push(`#agy-prism-host { zoom: ${scale}; }`);
+    }
+    if (rules.length) {
+      if (!devEl && document.head) {
+        devEl = document.createElement('style');
+        devEl.id = 'agy-prism-dev-overrides';
+        document.head.appendChild(devEl);
+      }
+      const cssText = rules.join('\n');
+      if (devEl && devEl.textContent !== cssText) devEl.textContent = cssText;
+    } else {
+      devEl?.remove?.();
+    }
+  };
   let sidebarListenerRoot = null;
   let sidebarListener = null;
   let hoveredCascadeId = '';
@@ -1646,6 +1701,7 @@ function installRuntime(owner, hash) {
       footerModelText: readFooterModelText(),
       convPath: location.pathname,
       expanded: overviewExpanded,
+      enableExtensions: devConfig?.enableUserExtensions !== false,
       onToggle: () => {
         overviewExpanded = !overviewExpanded;
         syncOverviewTelemetry();
@@ -2002,6 +2058,7 @@ function installRuntime(owner, hash) {
         pendingUpdateAction,
         updateActionSeq,
         needUpdateStatus: !updateStatus,
+        needDevState: !devConfig,
       };
     },
     apply(next, path, caller) {
@@ -2010,6 +2067,9 @@ function installRuntime(owner, hash) {
       data = next;
       dataPath = path;
       if (!pendingSettingsPatch && next?.prefs) opticalPrefs = next.prefs;
+      if (devConfig?.enableUserExtensions !== false) {
+        try { globalThis.__agyPrismExt?.emitSnapshot?.(next); } catch {}
+      }
       run();
       return true;
     },
@@ -2041,8 +2101,21 @@ function installRuntime(owner, hash) {
       heatmapForceRefresh = false;
       heatmapLastFetchAt = Date.now();
       try { localStorage.setItem('agyPrismUi.hmCacheV1', JSON.stringify(next)); } catch {}
+      if (devConfig?.enableUserExtensions !== false) {
+        try { globalThis.__agyPrismExt?.emitHeatmap?.(next); } catch {}
+      }
       ensureHeatmapChrome();
       syncConvHoverCard();
+      return true;
+    },
+    applyDevConfig(cfg, css, caller) {
+      if (caller < owner) return 'superseded';
+      if (caller !== owner || disposed) return false;
+      devConfig = cfg || null;
+      customCss = typeof css === 'string' ? css : '';
+      applyDevCustomization();
+      run();
+      syncOverviewTelemetry();
       return true;
     },
     dispose() {
@@ -2066,6 +2139,9 @@ function installRuntime(owner, hash) {
       lastHomeHost = null;
       lastPageHost = null;
       optical?.dispose();
+      try { globalThis.__agyPrismExt?.dispose?.(); } catch {}
+      document.getElementById('agy-prism-custom-css')?.remove();
+      document.getElementById('agy-prism-dev-overrides')?.remove();
       delete document.documentElement.dataset.agyHmOpen;
       document.getElementById('agy-heatmap-nav-btn')?.remove();
       document.getElementById('agy-heatmap-page-host')?.remove();
@@ -2083,9 +2159,9 @@ function installRuntime(owner, hash) {
 
 export function buildRuntimeBundle(owner = INSTANCE_TS) {
   const functions = [fmtK, fmtColK, quotaColor, makeRingSvg, formatGroupTitle, toView, pageMount, installRuntime].map(fn => fn.toString()).join('\n');
-  const source = getPresentationScript() + '\n' + getHeatmapRendererScript() + '\n' + getOpticalThemeScript() + '\n' + getOverviewRendererScript() + '\n' + functions;
+  const source = getPresentationScript() + '\n' + getHeatmapRendererScript() + '\n' + getOpticalThemeScript() + '\n' + getOverviewRendererScript() + '\n' + getExtensionBusScript() + '\n' + functions;
   const hash = createHash('sha256').update(source).digest('hex').slice(0, 16);
-  const code = `(()=>{const INSTANCE_TS=${Number(owner)};if(globalThis.__agyPrismDeck?.owner>INSTANCE_TS)return 'superseded';if(globalThis.__agyPrismDeck){try{globalThis.__agyPrismDeck.dispose();}catch{}}${getPresentationScript()}\n${getHeatmapRendererScript()}\n${getOpticalThemeScript()}\n${getOverviewRendererScript()}\nconst {escapeHtml,formatTokens,appearance,formatReset,cacheView}=globalThis.__agyPrismPresentation;\n${functions}\nreturn installRuntime(INSTANCE_TS,${JSON.stringify(hash)});})()`;
+  const code = `(()=>{const INSTANCE_TS=${Number(owner)};if(globalThis.__agyPrismDeck?.owner>INSTANCE_TS)return 'superseded';if(globalThis.__agyPrismDeck){try{globalThis.__agyPrismDeck.dispose();}catch{}}${getPresentationScript()}\n${getHeatmapRendererScript()}\n${getOpticalThemeScript()}\n${getOverviewRendererScript()}\n${getExtensionBusScript()}\nconst {escapeHtml,formatTokens,appearance,formatReset,cacheView}=globalThis.__agyPrismPresentation;\n${functions}\nreturn installRuntime(INSTANCE_TS,${JSON.stringify(hash)});})()`;
   return { code, hash };
 }
 
@@ -2250,6 +2326,15 @@ export function startDeckInjector(inspect, options = {}) {
               const appliedUpd = await evaluate(entry, `globalThis.__agyPrismDeck?.applyUpdateStatus(${updPayload},${owner})??false`, target.id);
               if (appliedUpd === 'superseded') return await supersede();
               if (appliedUpd) entry.lastUpdatePayload = updPayload;
+            }
+          }
+          if (typeof options.getDevState === 'function' && state?.owner === owner) {
+            const devState = options.getDevState();
+            const devPayload = JSON.stringify(devState);
+            if ((state.needDevState || entry.lastDevPayload !== devPayload) && !stopped) {
+              const appliedDev = await evaluate(entry, `globalThis.__agyPrismDeck?.applyDevConfig(${JSON.stringify(devState.config)},${JSON.stringify(devState.customCss || '')},${owner})??false`, target.id);
+              if (appliedDev === 'superseded') return await supersede();
+              if (appliedDev) entry.lastDevPayload = devPayload;
             }
           }
           if (typeof options.getHeatmap === 'function' && state?.owner === owner && state.heatmapWantData) {

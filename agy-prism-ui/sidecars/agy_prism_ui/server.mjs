@@ -17,8 +17,10 @@ import { installAsyncHostRoutes, installEpipeGuard } from './host_bridge.mjs';
 import { createHeatmapAggregator } from './heatmap.mjs';
 import { getHeatmapRendererScript } from './heatmap_ui.mjs';
 import { createUpdater } from './updater.mjs';
+import { buildAiDevPrompt, createDevStore } from './dev_config.mjs';
 
 const settingsStore = createSettingsStore();
+const devStore = createDevStore();
 const presentation = createPresentation();
 const heatmapAggregator = createHeatmapAggregator();
 const SIDECAR_DIR = dirname(fileURLToPath(import.meta.url));
@@ -1275,11 +1277,22 @@ const UI_HTML = `<!DOCTYPE html>
       .hist-charts-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media(pointer:coarse) { .pv-swatch { min-height: 40px; } }
+    .dev-box { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border, rgba(142,142,147,0.22)); background: var(--card, color-mix(in srgb, var(--foreground, #ebebeb) 3%, transparent)); font-size: 12px; margin-top: 6px; }
+    .dev-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .dev-num { width: 72px; padding: 3px 6px; border-radius: 6px; border: 1px solid var(--border, rgba(142,142,147,0.28)); background: var(--background, transparent); color: inherit; font: inherit; text-align: right; }
+    .dev-textarea { width: 100%; min-height: 82px; resize: vertical; padding: 7px 8px; border-radius: 8px; border: 1px solid var(--border, rgba(142,142,147,0.28)); background: var(--background, transparent); color: inherit; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 11px; box-sizing: border-box; }
+    .dev-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+    .dev-btn { border: 1px solid var(--border, rgba(142,142,147,0.28)); background: transparent; color: inherit; border-radius: 7px; padding: 4px 10px; font: inherit; font-size: 11.5px; cursor: pointer; }
+    .dev-btn:hover { border-color: #388bfd; color: #388bfd; }
+    .dev-btn-primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+    .dev-btn-primary:hover { color: #fff; filter: brightness(1.06); }
+    .dev-btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+    .dev-msg { font-size: 11px; color: var(--muted-foreground, #8e8e93); }
   </style>
 </head>
 <body>
   <main class="sidebar-content">
-  <div class="sidebar-nav" hidden>
+  <div class="sidebar-nav">
     <div class="sidebar-tabs" role="tablist" aria-label="Sidebar 页面" data-view="stats">
       <button type="button" id="sidebar-tab-stats" role="tab" aria-selected="true" aria-controls="sidebar-stats" tabindex="0">统计</button>
       <span class="sidebar-toggle-track" aria-hidden="true"><span class="sidebar-toggle-thumb"></span></span>
@@ -1466,6 +1479,27 @@ const UI_HTML = `<!DOCTYPE html>
       ['dev', 'updateChannelDev', '<span data-i18n="updateChannelDev"></span>'],
     ])}
     ${renderCheckCard({ id: 'setting-auto-check-updates', key: 'autoCheckUpdates', checked: DEFAULT_SETTINGS.autoCheckUpdates })}
+    <div class="dev-box" data-upd-box>
+      <div class="dev-row"><strong data-upd-ver>v${readCurrentPluginVersion()}</strong><span class="dev-msg" data-upd-status>准备就绪</span></div>
+      <div class="dev-actions">
+        <button type="button" class="dev-btn" data-upd-btn="check">立即检查</button>
+        <button type="button" class="dev-btn dev-btn-primary" data-upd-btn="apply" hidden>一键更新</button>
+      </div>
+    </div>
+
+    <div class="settings-scope">Dev 扩展与自定义</div>
+    <div class="dev-box" data-dev-panel>
+      <label class="setting-check"><input type="checkbox" data-dev-toggle="enableUserExtensions" checked /><span>启用用户运行时扩展（<code>__agyPrismExt</code>）</span></label>
+      <div class="dev-row"><span>Overview 展开宽度（0=原生320px）</span><input class="dev-num" type="number" min="0" max="520" step="10" value="0" data-dev-input="overviewWidthPx" /></div>
+      <div class="dev-row"><span>底栏透镜缩放（0.85–1.25）</span><input class="dev-num" type="number" min="0.85" max="1.25" step="0.05" value="1" data-dev-input="uiFontScale" /></div>
+      <label class="setting-check"><input type="checkbox" data-dev-toggle="customCssEnabled" /><span>注入自定义 CSS（custom.css）</span></label>
+      <textarea class="dev-textarea" data-dev-css placeholder="/* 在此编写注入桌面的自定义 CSS */"></textarea>
+      <div class="dev-actions">
+        <button type="button" class="dev-btn dev-btn-primary" data-dev-btn="save">保存 Dev 配置</button>
+        <button type="button" class="dev-btn" data-dev-btn="copy-prompt">复制 AI 开发 Prompt</button>
+      </div>
+      <div class="dev-msg" data-dev-msg>支持通过 window.__agyPrismExt 注册自定义透镜、Overview 卡片与热力图配色。</div>
+    </div>
   </section>
 
   </main>
@@ -1483,7 +1517,7 @@ const UI_HTML = `<!DOCTYPE html>
     let sidebarView = 'stats';
     const sidebarScroll = { stats: 0, settings: 0 };
     function selectSidebarView(view, focus = false) {
-      if (view !== 'stats') return;
+      if (view !== 'stats' && view !== 'settings') return;
       if (view !== sidebarView) {
         sidebarScroll[sidebarView] = window.scrollY;
         sidebarView = view;
@@ -1550,7 +1584,7 @@ const UI_HTML = `<!DOCTYPE html>
       document.getElementById('sidebar-tab-settings').textContent = settingsLabels.sidebarSettings;
       document.getElementById('sidebar-stats').lang = document.body.dataset.language;
       for (const select of document.querySelectorAll('.settings select[name]')) select.value = prefs[select.name];
-      for (const checkbox of document.querySelectorAll('.settings input[type="checkbox"]')) {
+      for (const checkbox of document.querySelectorAll('.settings input[name][type="checkbox"]')) {
         const checked = prefs[checkbox.name] === true;
         checkbox.checked = checked;
         const card = checkbox.closest('[data-setting-card]');
@@ -1696,6 +1730,86 @@ const UI_HTML = `<!DOCTYPE html>
         if (prefs[key] !== value) void saveSettings({ [key]: value });
       });
     }
+    async function refreshUpdateBox() {
+      const box = document.querySelector('[data-upd-box]');
+      if (!box) return;
+      try {
+        const api = apiOptions('/api/update/status');
+        const res = await fetch(api.url, { headers: api.headers });
+        const st = await res.json();
+        const verEl = box.querySelector('[data-upd-ver]');
+        const stEl = box.querySelector('[data-upd-status]');
+        const applyBtn = box.querySelector('[data-upd-btn="apply"]');
+        const checkBtn = box.querySelector('[data-upd-btn="check"]');
+        if (verEl) verEl.textContent = 'v' + String(st.currentVersion || '');
+        if (stEl) {
+          stEl.textContent = st.applying ? '正在更新…' : st.checking ? '正在检查…' : st.error ? ('失败：' + st.error) : st.updateAvailable ? ((st.actionKind === 'switch' ? '可切换 ' : '发现新版 ') + (st.latest?.tag || '')) : (st.lastCheckedAt ? '已是最新' : '点击检查');
+        }
+        if (applyBtn) {
+          applyBtn.hidden = !st.updateAvailable || st.state === 'applied';
+          applyBtn.disabled = Boolean(st.applying);
+          applyBtn.textContent = st.actionKind === 'switch' ? '一键切换' : '一键更新';
+        }
+        if (checkBtn) checkBtn.disabled = Boolean(st.checking || st.applying);
+      } catch {}
+    }
+    document.querySelector('[data-upd-btn="check"]')?.addEventListener('click', async () => {
+      const api = apiOptions('/api/update/check');
+      await fetch(api.url, { method: 'POST', headers: { ...api.headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ channel: prefs.updateChannel }) });
+      await refreshUpdateBox();
+    });
+    document.querySelector('[data-upd-btn="apply"]')?.addEventListener('click', async () => {
+      const api = apiOptions('/api/update/apply');
+      await fetch(api.url, { method: 'POST', headers: { ...api.headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ channel: prefs.updateChannel }) });
+      await refreshUpdateBox();
+    });
+    async function loadDevBox() {
+      const panel = document.querySelector('[data-dev-panel]');
+      if (!panel) return;
+      try {
+        const cfgApi = apiOptions('/api/dev/config');
+        const cssApi = apiOptions('/api/dev/custom-css');
+        const [cfgRes, cssRes] = await Promise.all([fetch(cfgApi.url, { headers: cfgApi.headers }), fetch(cssApi.url, { headers: cssApi.headers })]);
+        const cfg = await cfgRes.json();
+        const cssObj = await cssRes.json();
+        for (const el of panel.querySelectorAll('[data-dev-toggle]')) el.checked = Boolean(cfg[el.dataset.devToggle]);
+        for (const el of panel.querySelectorAll('[data-dev-input]')) el.value = String(cfg[el.dataset.devInput] ?? '');
+        const area = panel.querySelector('[data-dev-css]');
+        if (area) area.value = String(cssObj?.css || '');
+      } catch {}
+    }
+    document.querySelector('[data-dev-btn="save"]')?.addEventListener('click', async () => {
+      const panel = document.querySelector('[data-dev-panel]');
+      const msgEl = panel?.querySelector('[data-dev-msg]');
+      if (!panel) return;
+      const patch = {};
+      for (const el of panel.querySelectorAll('[data-dev-toggle]')) patch[el.dataset.devToggle] = Boolean(el.checked);
+      for (const el of panel.querySelectorAll('[data-dev-input]')) patch[el.dataset.devInput] = Number(el.value);
+      const css = panel.querySelector('[data-dev-css]')?.value || '';
+      try {
+        const cApi = apiOptions('/api/dev/config');
+        const sApi = apiOptions('/api/dev/custom-css');
+        await fetch(cApi.url, { method: 'POST', headers: { ...cApi.headers, 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
+        await fetch(sApi.url, { method: 'POST', headers: { ...sApi.headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ css }) });
+        if (msgEl) msgEl.textContent = '已保存 Dev 配置并热同步到桌面端。';
+      } catch {
+        if (msgEl) msgEl.textContent = '保存失败，请重试。';
+      }
+    });
+    document.querySelector('[data-dev-btn="copy-prompt"]')?.addEventListener('click', async () => {
+      const msgEl = document.querySelector('[data-dev-msg]');
+      try {
+        const api = apiOptions('/api/dev/prompt');
+        const res = await fetch(api.url, { headers: api.headers });
+        const obj = await res.json();
+        await navigator.clipboard?.writeText?.(obj.prompt || '');
+        if (msgEl) msgEl.textContent = '已复制 AI 开发 Prompt 到剪贴板。';
+      } catch {
+        if (msgEl) msgEl.textContent = '复制失败，请访问 /api/dev/prompt 查看。';
+      }
+    });
+    void refreshUpdateBox();
+    void loadDevBox();
     function fmtK(n) {
       return presentation.formatTokens(n);
     }
@@ -1977,6 +2091,11 @@ if (isMain && process.env.ANTIGRAVITY_SIDECAR_WEB_PORT) {
   app.api('/api/update/status', (data) => updater.getStatus(data?.channel), 'GET');
   app.api('/api/update/check', async (data) => await updater.checkForUpdates({ channel: data?.channel, manual: true }), 'POST');
   app.api('/api/update/apply', async (data) => await updater.applyUpdate({ channel: data?.channel }), 'POST');
+  app.api('/api/dev/config', () => devStore.readConfig(), 'GET');
+  app.api('/api/dev/config', (data) => devStore.updateConfig(data), 'POST');
+  app.api('/api/dev/custom-css', () => ({ css: devStore.readCustomCss() }), 'GET');
+  app.api('/api/dev/custom-css', (data) => ({ css: devStore.writeCustomCss(data?.css || '') }), 'POST');
+  app.api('/api/dev/prompt', () => ({ prompt: buildAiDevPrompt({ pluginDir: PLUGIN_DIR, version: readCurrentPluginVersion() }) }), 'GET');
   app.run();
   installAsyncHostRoutes(app);
 }
@@ -1985,6 +2104,7 @@ if (hasSidecarRuntime) {
     getHeatmap: (force) => heatmapAggregator.getSnapshot({ force }),
     getPrefs: () => settingsStore.read(),
     updateSettings: (patch) => settingsStore.update(patch),
+    getDevState: () => ({ config: devStore.readConfig(), customCss: devStore.readCustomCss() }),
     getUpdateStatus: () => updater.getStatus(),
     runUpdateAction: async (action) => {
       if (action?.type === 'apply') return await updater.applyUpdate({ channel: action.channel });
