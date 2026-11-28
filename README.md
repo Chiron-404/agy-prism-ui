@@ -1,6 +1,6 @@
 # Agy Prism UI (`agy-prism-ui`)
 
-**中文** | [English](./README.en.md)
+**中文** | [English](./README.en.md) | [更新日志](./CHANGELOG.md)
 
 > [!NOTE]
 > **来源、非原创声明与致谢（IMMO-CHIRON · GPL-3.0）**
