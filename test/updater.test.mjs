@@ -14,6 +14,7 @@ import {
   getCurrentScheduleSlot,
   getNextScheduleTime,
   parseReleaseVersion,
+  parseReleasesAtom,
   selectReleaseForChannel,
 } from '../agy-prism-ui/sidecars/agy_prism_ui/updater.mjs';
 
@@ -294,6 +295,116 @@ test('applyUpdate performs SHA-256 verification, atomic swap, Windows non-ASCII 
 
     // Direct helper check for applyWindowsNonAsciiSidecarFix
     assert.equal(typeof applyWindowsNonAsciiSidecarFix, 'function');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('parseReleasesAtom and checkForUpdates handle 403 fallback, ETag 304, all-channel slots, and failure backoff', async () => {
+  const shaStable = 'a'.repeat(64);
+  const shaDev = 'b'.repeat(64);
+  const atomXml = `<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <entry>
+    <link rel="alternate" type="text/html" href="https://github.com/Chiron-404/agy-prism-ui/releases/tag/v2.0.3"/>
+    <title>Agy Prism UI v2.0.3</title>
+    <updated>2026-11-28T04:26:40Z</updated>
+    <content type="html">&lt;blockquote&gt;&lt;p&gt;Provenance credit&lt;/p&gt;&lt;/blockquote&gt;&lt;ul&gt;&lt;li&gt;&lt;strong&gt;Hover fix&lt;/strong&gt;: native emphasis&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;Archive: &lt;code&gt;agy-prism-ui-v2.0.3.zip&lt;/code&gt; SHA-256: &lt;code&gt;${shaStable}&lt;/code&gt;&lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <link rel="alternate" type="text/html" href="https://github.com/Chiron-404/agy-prism-ui/releases/tag/v2.0.3-dev"/>
+    <title>Agy Prism UI v2.0.3-dev</title>
+    <updated>2026-11-28T04:34:39Z</updated>
+    <content type="html">&lt;ul&gt;&lt;li&gt;&lt;strong&gt;Dev channel&lt;/strong&gt;: extension bus&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;Archive: &lt;code&gt;agy-prism-ui-v2.0.3-dev.zip&lt;/code&gt; SHA-256: &lt;code&gt;${shaDev}&lt;/code&gt;&lt;/p&gt;</content>
+  </entry>
+</feed>`;
+
+  const parsedAtom = parseReleasesAtom(atomXml);
+  assert.equal(parsedAtom.length, 2);
+  const stablePick = selectReleaseForChannel(parsedAtom, 'stable');
+  const devPick = selectReleaseForChannel(parsedAtom, 'dev');
+  assert.equal(stablePick.tag, 'v2.0.3');
+  assert.equal(stablePick.sha256, shaStable);
+  assert.equal(stablePick.prerelease, false);
+  assert.equal(stablePick.assetName, 'agy-prism-ui-v2.0.3.zip');
+  assert.equal(devPick.tag, 'v2.0.3-dev');
+  assert.equal(devPick.sha256, shaDev);
+  assert.equal(devPick.prerelease, true);
+  assert.equal(devPick.downloadUrl, 'https://github.com/Chiron-404/agy-prism-ui/releases/download/v2.0.3-dev/agy-prism-ui-v2.0.3-dev.zip');
+  assert.ok(stablePick.summary.includes('Hover fix: native emphasis'));
+  assert.ok(!stablePick.summary.includes('Provenance credit'));
+
+  const dir = mkdtempSync(join(tmpdir(), 'agy-atom-'));
+  try {
+    let channel = 'stable';
+    let nowMs = new Date(2026, 10, 28, 10, 0, 0).getTime();
+    let mode = 'api-403';
+    const seenIfNoneMatch = [];
+    let fetchCount = 0;
+
+    const updater = createUpdater({
+      pluginDir: join(dir, 'plugin'),
+      currentVersion: '2.0.3',
+      statePath: join(dir, 'update_state.json'),
+      getPrefs: () => ({ updateChannel: channel, autoCheckUpdates: true }),
+      now: () => nowMs,
+      fetchImpl: async (url, init = {}) => {
+        fetchCount++;
+        if (url.includes('/releases.atom')) {
+          if (mode === 'both-fail') return new Response('unavailable', { status: 503 });
+          return new Response(atomXml, { status: 200, headers: { 'Content-Type': 'application/atom+xml' } });
+        }
+        seenIfNoneMatch.push(init?.headers?.['If-None-Match'] || '');
+        if (mode === 'api-403') {
+          return new Response('rate limit', { status: 403, headers: { 'x-ratelimit-reset': String(Math.floor((nowMs + 3600_000) / 1000)) } });
+        }
+        if (mode === 'api-200') {
+          return new Response(JSON.stringify([
+            { tag_name: 'v2.0.3', prerelease: false, draft: false, assets: [{ name: 'agy-prism-ui-v2.0.3.zip', browser_download_url: 'https://github.com/Chiron-404/agy-prism-ui/releases/download/v2.0.3/agy-prism-ui-v2.0.3.zip', digest: `sha256:${shaStable}` }] },
+          ]), { status: 200, headers: { etag: 'W/"etag-v203"' } });
+        }
+        if (mode === 'api-304') {
+          return new Response(null, { status: 304 });
+        }
+        return new Response('err', { status: 500 });
+      },
+    });
+
+    // 1) REST API 403 transparently falls back to releases.atom and clears error
+    const s1 = await updater.checkForUpdates({ channel: 'dev', manual: true });
+    assert.equal(s1.state, 'available');
+    assert.equal(s1.actionKind, 'switch');
+    assert.equal(s1.error, '');
+    assert.equal(s1.latest.tag, 'v2.0.3-dev');
+    assert.equal(s1.latest.sha256, shaDev);
+
+    // Switching channel within same slot skips redundant scheduled check
+    channel = 'stable';
+    assert.equal(await updater.maybeRunScheduledCheck(), false);
+
+    // 2) ETag 200 -> 304 saves quota & preserves cached release
+    mode = 'api-200';
+    nowMs += 120_000;
+    const s2 = await updater.checkForUpdates({ channel: 'stable', manual: true });
+    assert.equal(s2.state, 'up-to-date');
+    assert.equal(s2.latest.tag, 'v2.0.3');
+
+    mode = 'api-304';
+    nowMs += 120_000;
+    const s3 = await updater.checkForUpdates({ channel: 'stable', manual: true });
+    assert.equal(seenIfNoneMatch.at(-1), 'W/"etag-v203"');
+    assert.equal(s3.state, 'up-to-date');
+    assert.equal(s3.latest.tag, 'v2.0.3');
+
+    // 3) Both REST API and Atom fail -> 15-min backoff blocks immediate retry
+    mode = 'both-fail';
+    nowMs = new Date(2026, 10, 28, 19, 5, 0).getTime();
+    const s4 = await updater.checkForUpdates({ channel: 'stable', manual: true });
+    assert.equal(s4.state, 'error');
+    assert.ok(s4.error.includes('403') || s4.error.includes('500'));
+    const countAfterFail = fetchCount;
+    assert.equal(await updater.maybeRunScheduledCheck(), false);
+    assert.equal(fetchCount, countAfterFail);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

@@ -1942,7 +1942,9 @@ ${getDayPopCss(accent, dark)}
         const ch = chBtn.getAttribute('data-upd-channel');
         if (!ch) return;
         callbacks.onUpdatePrefs?.({ updateChannel: ch });
-        callbacks.onCheckUpdate?.(ch);
+        if (!callbacks.updateStatus?.lastCheckedAt || callbacks.updateStatus?.state === 'error') {
+          callbacks.onCheckUpdate?.(ch);
+        }
       });
     }
     const updChk = root.querySelector('[data-upd-chk="autoCheckUpdates"]');
@@ -2255,7 +2257,7 @@ ${getDayPopCss(accent, dark)}
   }
 
   return {
-    version: 26,
+    version: 27,
     SUPPORTED_HM_LOCALES,
     resolveHmLang,
     hmT,
@@ -2272,4 +2274,4 @@ ${getDayPopCss(accent, dark)}
   };
 }
 
-export const getHeatmapRendererScript = () => `if (globalThis.__agyPrismHeatmapUI?.version !== 26) globalThis.__agyPrismHeatmapUI = (${createHeatmapRenderer.toString()})();`;
+export const getHeatmapRendererScript = () => `if (globalThis.__agyPrismHeatmapUI?.version !== 27) globalThis.__agyPrismHeatmapUI = (${createHeatmapRenderer.toString()})();`;

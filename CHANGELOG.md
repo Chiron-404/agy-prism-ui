@@ -15,7 +15,8 @@ This file documents user-facing feature additions, visual refinements, and stabi
 - **内置三通道更新器与一键热更新**：
   - 在 Insights 顶栏新增独立 **「更新」** 按钮与毛玻璃浮窗（检测到新版本时在首页卡片与顶栏显示轻提示），支持 **正式版（`stable`）**、**预览版（`preview`）** 与 **开发版（`dev`）** 三条通道切换；
   - 支持每日 **09:00 / 19:00** 定时自动检查（含休眠/重启错过时段补检，可随时开关），也可点击「立即检查」手动检查；
-  - 发现新版或跨通道切换时提供 **「一键更新 / 一键切换」**，校验 SHA-256 后自动下载、安全替换并热重载（保留非 ASCII 路径兼容与异常自动回滚）。
+  - 发现新版或跨通道切换时提供 **「一键更新 / 一键切换」**，校验 SHA-256 后自动下载、安全替换并热重载（保留非 ASCII 路径兼容与异常自动回滚）；
+  - 更新检测支持 `ETag` (`If-None-Match` / `304`) 缓存及无 API 限流限制的 `releases.atom` 自动回退，切换通道优先复用已缓存结果，避免触发 GitHub API `403` 限流。
 - **新增 AI 开发者参考指南**：新增 [AI_DEV_GUIDE.md](./AI_DEV_GUIDE.md)，梳理模块结构、运行约束与可直接复制的 AI Agent 开发提示词。
 
 ### English
@@ -25,7 +26,8 @@ This file documents user-facing feature additions, visual refinements, and stabi
 - **Built-in 3-Channel Updater & One-Click Hot Update**:
   - Added an **Update** button and frosted-glass popover in the Insights topbar (plus a subtle Home banner pill when an upgrade is ready), supporting **Stable**, **Preview**, and **Dev** channels;
   - Supports scheduled daily checks at **09:00 & 19:00** (including startup catch-up if missed, toggleable) as well as manual checks;
-  - Provides **One-Click Update / Switch** with SHA-256 verification, pure-Node ZIP extraction, automatic non-ASCII Windows sidecar preservation, rollback protection, and instant hot-reload.
+  - Provides **One-Click Update / Switch** with SHA-256 verification, pure-Node ZIP extraction, automatic non-ASCII Windows sidecar preservation, rollback protection, and instant hot-reload;
+  - Uses `ETag` (`If-None-Match` / `304`) caching, avoids redundant checks when switching channels, and automatically falls back to GitHub's zero-rate-limit `releases.atom` feed if the REST API returns `403`/`429`.
 - **Added AI Developer Guide**: Added [AI_DEV_GUIDE.md](./AI_DEV_GUIDE.md) documenting the architecture, serialization invariants, and a copy-ready prompt for AI coding agents.
 
 ---
