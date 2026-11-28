@@ -109,7 +109,7 @@ Run the Node tests from the repository root. Playwright is not required:
 node --test "test/*.test.mjs"
 ```
 
-Browser regression tests are optional. With Playwright and Chromium installed, run `node test/browser-regressions.mjs` separately.
+Browser regression tests are optional. With Playwright and Chromium installed, run `node test/browser-regressions.mjs` separately. For architecture invariants and copy-ready AI agent prompts, see [AI_DEV_GUIDE.md](./AI_DEV_GUIDE.md).
 
 ## Contributing
 

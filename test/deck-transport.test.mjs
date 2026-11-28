@@ -81,7 +81,7 @@ test('clicking context footer pill jumps to Overview telemetry and old sidebar j
   assert.ok(!UI_HTML.includes('agy-prism-ui:select-view'));
 
   const overview = createOverviewRenderer();
-  assert.equal(overview.version, 5);
+  assert.equal(overview.version, 6);
   const ovSrc = createOverviewRenderer.toString();
   assert.ok(ovSrc.includes('ov-context-card'));
   assert.ok(ovSrc.includes('ov-history-root'));
@@ -89,6 +89,11 @@ test('clicking context footer pill jumps to Overview telemetry and old sidebar j
   assert.ok(ovSrc.includes("titleEl.textContent = 'Telemetry'"));
   assert.ok(!ovSrc.includes('会话遥测'));
   assert.ok(!ovSrc.includes('aria-expanded="true"] .ov-title'));
+  assert.ok(!ovSrc.includes('.ov-head:hover {\n  background:'));
+  assert.ok(ovSrc.includes('.ov-head:hover .ov-title,\n.ov-head:focus-visible .ov-title {\n  opacity: 1;\n}'));
+  assert.ok(ovSrc.includes('@media (hover: hover) {\n  .ov-chev { opacity: 0; }\n}'));
+  assert.ok(ovSrc.includes('transform: rotate(90deg);'));
+  assert.ok(!/\.ov-chev\s*\{[^}]*margin-left:\s*auto/.test(ovSrc));
   assert.ok(!ovSrc.includes('@media (min-width: 360px)'));
   assert.ok(code.includes("host.style.contain = 'inline-size'"));
   assert.ok(!code.includes('width: min(404px'));
@@ -115,7 +120,15 @@ test('toView renders --% for null quota remainingFraction and drops unused conte
 
 test('Overview turn & request history rows hide details until expanded, preserve tooltip, and reset across conversations', () => {
   const ui = createPresentation();
-  assert.equal(ui.version, 72);
+  assert.equal(ui.version, 73);
+  assert.equal(ui.localeWidthClass('en'), 'wide');
+  assert.equal(ui.localeWidthClass('ja'), 'wide');
+  assert.equal(ui.localeWidthClass('zh-CN'), 'compact');
+  const { code } = buildRuntimeBundle(1);
+  assert.ok(code.includes('--dk-ctx-pop-width'));
+  assert.ok(code.includes('data-lang-width="wide"'));
+  assert.ok(code.includes('display: flex; flex-wrap: wrap; justify-content: space-between;'));
+  assert.ok(code.includes('[data-history-row="session"] > [data-i18n="sessionTotal"] { display: none; }'));
   const labels = ui.dictionaries['zh-CN'];
   const history = {
     summary: { turnCount: 1, requestCount: 12, totalSessionTokens: 450000, compactionCount: 0, avgTps: 109.2, avgStreamTps: 215.5, peakTps: 215.5, peakContextTokens: 422000 },

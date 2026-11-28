@@ -260,7 +260,7 @@ test('estimateRequestCostUsd prioritizes Hydrogen family over generic Orchestrat
   assert.ok(Math.abs(orchWorkerCost - 3.75) < 1e-6);
 
   const ui = createHeatmapRenderer();
-  assert.equal(ui.version, 25);
+  assert.equal(ui.version, 26);
   assert.equal(typeof ui.buildDynamicPalette, 'function');
   assert.equal(typeof ui.cleanupHeatmapRoot, 'function');
   const src = createHeatmapRenderer.toString();
@@ -686,4 +686,48 @@ test('buildDynamicPalette and heatmap UI render dynamic legend swatches and upda
     globalThis.document = prevDoc;
     globalThis.localStorage = prevLs;
   }
+});
+
+test('Insights update UI renders channel controls, one-click update button, and Home update pill', () => {
+  const ui = createHeatmapRenderer();
+  const data = buildHeatmapData([], new Date(2026, 10, 28, 12, 0, 0).getTime());
+  const updateStatus = {
+    currentVersion: '2.0.3',
+    currentChannel: 'stable',
+    channel: 'stable',
+    autoCheckUpdates: true,
+    checking: false,
+    applying: false,
+    state: 'available',
+    updateAvailable: true,
+    actionKind: 'upgrade',
+    latest: {
+      tag: 'v2.0.4',
+      channel: 'stable',
+      summary: 'New release summary',
+      htmlUrl: 'https://github.com/Chiron-404/agy-prism-ui/releases/tag/v2.0.4',
+    },
+    lastCheckedAt: Date.now(),
+    nextCheckLabel: '19:00',
+    error: '',
+  };
+
+  const full = ui.buildFullHtml(data, {
+    hasUpdateControl: true,
+    updateStatus,
+    prefs: { updateChannel: 'stable', autoCheckUpdates: true },
+  });
+  assert.ok(full.includes('data-hm-action="update-toggle"'));
+  assert.ok(full.includes('hm-upd-dot'));
+  assert.ok(full.includes('data-upd-channel="stable"'));
+  assert.ok(full.includes('data-upd-channel="preview"'));
+  assert.ok(full.includes('data-upd-channel="dev"'));
+  assert.ok(full.includes('data-upd-chk="autoCheckUpdates"'));
+  assert.ok(full.includes('data-hm-action="update-apply"'));
+  assert.ok(full.includes('一键更新'));
+  assert.ok(full.includes('data-hm-action="update-check"'));
+
+  const home = ui.buildHomeHtml(data, { updateStatus });
+  assert.ok(home.includes('data-hm-home="update"'));
+  assert.ok(home.includes('新版本 v2.0.4'));
 });

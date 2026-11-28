@@ -36,10 +36,6 @@ export function createOverviewRenderer() {
   text-align: left;
   cursor: pointer;
   outline: none;
-  transition: background-color 140ms ease;
-}
-.ov-head:hover {
-  background: color-mix(in srgb, var(--foreground, #0d1321) 4.5%, transparent);
 }
 .ov-head:focus-visible {
   box-shadow: inset 0 0 0 1px var(--ring, #388bfd);
@@ -52,8 +48,9 @@ export function createOverviewRenderer() {
   white-space: nowrap;
   transition: opacity 150ms ease;
 }
-.ov-head:hover .ov-title {
-  opacity: 0.65;
+.ov-head:hover .ov-title,
+.ov-head:focus-visible .ov-title {
+  opacity: 1;
 }
 .ov-badge {
   display: inline-flex;
@@ -68,24 +65,37 @@ export function createOverviewRenderer() {
   font-size: 10.5px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
-  opacity: 0.85;
+  opacity: 0.5;
   white-space: nowrap;
+  transition: opacity 150ms ease;
+}
+.ov-head:hover .ov-badge,
+.ov-head:focus-visible .ov-badge {
+  opacity: 1;
 }
 .ov-badge:empty { display: none; }
 .ov-chev {
-  margin-left: auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 16px;
   height: 16px;
+  flex-shrink: 0;
   color: var(--muted-foreground, #64748b);
-  opacity: 0.7;
-  transition: transform 160ms ease, opacity 140ms ease;
+  opacity: 1;
+  transform: rotate(0deg);
+  transition: color 150ms ease, opacity 150ms ease, transform 150ms ease;
 }
-.ov-head:hover .ov-chev { opacity: 1; }
+@media (hover: hover) {
+  .ov-chev { opacity: 0; }
+}
+.ov-head:hover .ov-chev,
+.ov-head:focus-visible .ov-chev {
+  opacity: 1;
+  color: var(--foreground, #0d1321);
+}
 .ov-head[aria-expanded="true"] .ov-chev {
-  transform: rotate(180deg);
+  transform: rotate(90deg);
 }
 .ov-body {
   display: flex;
@@ -345,24 +355,29 @@ export function createOverviewRenderer() {
   margin-top: var(--agy-section-gap);
 }
 .generation-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
   gap: 5px 10px;
   row-gap: var(--agy-row-gap);
-  align-items: baseline;
 }
 .generation-row {
   display: inline-flex;
   align-items: baseline;
   gap: 4px;
   min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   font-size: 11.5px;
   color: var(--muted-foreground, #8e8e93);
 }
-[data-generation-row="speed"] { justify-self: end; }
-.generation-row > :first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[data-generation-row="speed"] { margin-left: auto; }
+.generation-row > :first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .generation-row > :last-child {
-  flex-shrink: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 500;
   color: color-mix(in srgb, var(--foreground, #0d1321) 88%, transparent);
@@ -627,13 +642,13 @@ export function createOverviewRenderer() {
       shadow = host.attachShadow({ mode: 'open' });
     }
     let wrap = shadow.getElementById('ov-telemetry-wrap');
-    if (!wrap || wrap.dataset.ovVer !== '5') {
+    if (!wrap || wrap.dataset.ovVer !== '6') {
       shadow.innerHTML = `<style>${CSS}</style>`
-        + `<div class="ov-wrap" id="ov-telemetry-wrap" data-ov-ver="5">`
+        + `<div class="ov-wrap" id="ov-telemetry-wrap" data-ov-ver="6">`
         + `<button type="button" class="ov-head" id="ov-toggle-btn" aria-expanded="false">`
         + `<span class="ov-title" id="ov-title">Telemetry</span>`
         + `<span class="ov-badge" id="ov-badge"></span>`
-        + `<span class="ov-chev" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg></span>`
+        + `<span class="ov-chev" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg></span>`
         + `</button>`
         + `<div class="ov-body" data-ov-body hidden>`
         + `<section class="ov-card ov-context-card" id="ov-context-card">`
@@ -766,9 +781,9 @@ export function createOverviewRenderer() {
   }
 
   return {
-    version: 5,
+    version: 6,
     renderOverviewTelemetry,
   };
 }
 
-export const getOverviewRendererScript = () => `if (globalThis.__agyPrismOverviewUI?.version !== 5) globalThis.__agyPrismOverviewUI = (${createOverviewRenderer.toString()})();`;
+export const getOverviewRendererScript = () => `if (globalThis.__agyPrismOverviewUI?.version !== 6) globalThis.__agyPrismOverviewUI = (${createOverviewRenderer.toString()})();`;

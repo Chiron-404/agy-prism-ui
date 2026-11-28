@@ -109,7 +109,7 @@
 node --test "test/*.test.mjs"
 ```
 
-浏览器回归是可选的。装好 Playwright 和 Chromium 后，可单独运行 `node test/browser-regressions.mjs`。
+浏览器回归是可选的。装好 Playwright 和 Chromium 后，可单独运行 `node test/browser-regressions.mjs`。面向开发者与 AI Agent 的架构规范及提示词见 [AI_DEV_GUIDE.md](./AI_DEV_GUIDE.md)。
 
 ## 贡献
 

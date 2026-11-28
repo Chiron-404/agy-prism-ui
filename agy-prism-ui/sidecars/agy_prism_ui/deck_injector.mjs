@@ -77,11 +77,11 @@ function pageMount(d) {
   }
 
   // Upgrade or initialize DOM structure in-place
-  if (root.getAttribute('data-deck-ver') !== '122') {
+  if (root.getAttribute('data-deck-ver') !== '123') {
     release(root);
     root._pinnedGroup = null;
     root.removeAttribute('data-pinned');
-    root.setAttribute('data-deck-ver', '122');
+    root.setAttribute('data-deck-ver', '123');
     root._speedActivity = null;
     root._motionPrev = null;
     root.style.cssText = [
@@ -220,11 +220,12 @@ function pageMount(d) {
         #deck-metrics-strip .dk-model-btag[data-phase="execute"] { background: rgba(16, 185, 129, 0.16); color: light-dark(#059669, #34d399); }
         #deck-metrics-strip .dk-model-bmeta { font-size: 11.5px; color: var(--muted-foreground, #8e8e93); white-space: nowrap; }
         #deck-metrics-strip .dk-generation { margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--border, rgba(142,142,147,.24)); font-variant-numeric: tabular-nums; }
-        #deck-metrics-strip .generation-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--agy-row-gap, 5px) 10px; align-items: baseline; }
-        #deck-metrics-strip .generation-row { display: inline-flex; align-items: baseline; gap: 4px; min-width: 0; font-size: 13.5px; font-weight: 400; color: var(--muted-foreground, #8e8e93); }
-        #deck-metrics-strip [data-generation-row="speed"] { justify-self: end; }
-        #deck-metrics-strip .generation-row > :first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        #deck-metrics-strip .generation-row > :last-child { flex-shrink: 0; white-space: nowrap; font-weight: 500; color: var(--foreground, #18181b); color: color-mix(in srgb, var(--foreground, #18181b) 88%, transparent); }
+        #deck-metrics-strip .generation-grid { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: var(--agy-row-gap, 4px) 10px; }
+        #deck-metrics-strip .generation-row { display: inline-flex; align-items: baseline; gap: 4px; min-width: 0; max-width: 100%; overflow: hidden; font-size: 13px; font-weight: 400; color: var(--muted-foreground, #8e8e93); }
+        #deck-metrics-strip [data-generation-row="speed"] { margin-left: auto; }
+        #deck-metrics-strip .generation-row > :first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+        #deck-metrics-strip .generation-row > :last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; color: var(--foreground, #18181b); color: color-mix(in srgb, var(--foreground, #18181b) 88%, transparent); }
+        #deck-metrics-strip .dk-ctx-pop .dk-history-block [data-history-row="session"] > [data-i18n="sessionTotal"] { display: none; }
         #deck-metrics-strip [data-generation-row="timing"] > :last-child { font-weight: 400; color: var(--muted-foreground, #8e8e93); }
         #deck-metrics-strip .generation-heading { margin-bottom: 8px; font-size: 13.5px; font-weight: 500; color: var(--foreground, #18181b); color: color-mix(in srgb, var(--foreground, #18181b) 88%, transparent); }
         #deck-metrics-strip .generation-row[hidden], #deck-metrics-strip [data-generation-group][hidden] { display: none; }
@@ -326,7 +327,10 @@ function pageMount(d) {
         #deck-metrics-strip .dk-grp[data-dismissed="true"] .dk-pop { display: none; }
         /* Context Popover (matches plugin UI) */
         #deck-metrics-strip .dk-ctx-pop {
-          width: 228px;
+          width: min(var(--dk-ctx-pop-width, 264px), var(--dk-pop-max-width, calc(100vw - 16px)));
+        }
+        #deck-metrics-strip[data-lang-width="wide"] .dk-ctx-pop {
+          --dk-ctx-pop-width: 278px;
         }
         #deck-metrics-strip .dk-cache-bar {
           display: flex;
@@ -1583,12 +1587,16 @@ function installRuntime(owner, hash) {
     if (rawCache) heatmapData = JSON.parse(rawCache);
   } catch {}
   let heatmapOpen = false;
+  let heatmapOpenUpdate = false;
   let heatmapOpenedPath = '';
   let heatmapForceRefresh = false;
   let heatmapLastFetchAt = 0;
   let opticalPrefs = null;
   let pendingSettingsPatch = null;
   let settingsPatchSeq = 0;
+  let updateStatus = null;
+  let pendingUpdateAction = null;
+  let updateActionSeq = 0;
   let sidebarListenerRoot = null;
   let sidebarListener = null;
   let hoveredCascadeId = '';
@@ -1717,12 +1725,23 @@ function installRuntime(owner, hash) {
       hmUi.renderFullHeatmap(pageHost.shadowRoot, heatmapData, {
         showClose: true,
         prefs: opticalPrefs,
+        updateStatus,
+        updOpen: heatmapOpenUpdate,
+        onUpdOpenChange: (open) => {
+          heatmapOpenUpdate = Boolean(open);
+        },
         onUpdatePrefs: (patch) => {
           opticalPrefs = { ...(opticalPrefs || {}), ...patch };
           pendingSettingsPatch = { ...(pendingSettingsPatch || {}), ...patch };
           settingsPatchSeq++;
           globalThis.__agyPrismOptical?.apply(opticalPrefs);
           ensureHeatmapChrome();
+        },
+        onCheckUpdate: (channel) => {
+          pendingUpdateAction = { type: 'check', channel: channel || opticalPrefs?.updateChannel, seq: ++updateActionSeq };
+        },
+        onApplyUpdate: (channel) => {
+          pendingUpdateAction = { type: 'apply', channel: channel || opticalPrefs?.updateChannel, seq: ++updateActionSeq };
         },
         onRefresh: () => {
           heatmapForceRefresh = true;
@@ -1733,6 +1752,7 @@ function installRuntime(owner, hash) {
         },
         onClose: () => {
           heatmapOpen = false;
+          heatmapOpenUpdate = false;
           ensureHeatmapChrome();
         },
       });
@@ -1769,8 +1789,17 @@ function installRuntime(owner, hash) {
         composer.insertAdjacentElement('beforebegin', homeHost);
       }
       hmUi.renderHomeHeatmapCard(homeHost.shadowRoot, heatmapData, {
+        updateStatus,
         onOpenFull: () => {
           heatmapOpen = true;
+          heatmapOpenUpdate = false;
+          heatmapOpenedPath = location.pathname;
+          if (!heatmapData || Date.now() - heatmapLastFetchAt > 30000) heatmapForceRefresh = true;
+          ensureHeatmapChrome();
+        },
+        onOpenUpdate: () => {
+          heatmapOpen = true;
+          heatmapOpenUpdate = true;
           heatmapOpenedPath = location.pathname;
           if (!heatmapData || Date.now() - heatmapLastFetchAt > 30000) heatmapForceRefresh = true;
           ensureHeatmapChrome();
@@ -1970,6 +1999,9 @@ function installRuntime(owner, hash) {
         pendingSettingsPatch,
         settingsPatchSeq,
         needOpticalPrefs: !opticalPrefs,
+        pendingUpdateAction,
+        updateActionSeq,
+        needUpdateStatus: !updateStatus,
       };
     },
     apply(next, path, caller) {
@@ -1989,6 +2021,16 @@ function installRuntime(owner, hash) {
         pendingSettingsPatch = null;
       }
       globalThis.__agyPrismOptical?.apply(opticalPrefs || {});
+      ensureHeatmapChrome();
+      return true;
+    },
+    applyUpdateStatus(next, caller, ackSeq = null) {
+      if (caller < owner) return 'superseded';
+      if (caller !== owner || disposed) return false;
+      updateStatus = next || null;
+      if (ackSeq === null || ackSeq === updateActionSeq) {
+        pendingUpdateAction = null;
+      }
       ensureHeatmapChrome();
       return true;
     },
@@ -2058,6 +2100,7 @@ export function startDeckInjector(inspect, options = {}) {
   let lastErr = '';
   let stopped = false;
   let busy = false;
+  let activeUpdateSeq = -1;
   // 'unknown' until the first lookup; the sidebar explains 'missing' / 'unreachable'.
   let cdpState = 'unknown';
   let latestFooterModelText = '';
@@ -2184,6 +2227,29 @@ export function startDeckInjector(inspect, options = {}) {
               const appliedOpt = await evaluate(entry, `globalThis.__agyPrismDeck?.applyOptical(${prefsPayload},${owner})??false`, target.id);
               if (appliedOpt === 'superseded') return await supersede();
               if (appliedOpt) entry.lastOpticalPayload = prefsPayload;
+            }
+          }
+          if (typeof options.runUpdateAction === 'function' && state?.owner === owner && state.pendingUpdateAction) {
+            const act = state.pendingUpdateAction;
+            if (act.seq !== activeUpdateSeq) {
+              activeUpdateSeq = act.seq;
+              void Promise.resolve(options.runUpdateAction(act)).catch(err => {
+                logOnce('update action failed: ' + (err?.message || err));
+              });
+            }
+            if (typeof options.getUpdateStatus === 'function' && !stopped) {
+              const updPayload = JSON.stringify(options.getUpdateStatus());
+              const ackArg = Number.isFinite(state.updateActionSeq) ? `,${state.updateActionSeq}` : '';
+              const appliedUpd = await evaluate(entry, `globalThis.__agyPrismDeck?.applyUpdateStatus(${updPayload},${owner}${ackArg})??false`, target.id);
+              if (appliedUpd === 'superseded') return await supersede();
+              if (appliedUpd) entry.lastUpdatePayload = updPayload;
+            }
+          } else if (typeof options.getUpdateStatus === 'function' && state?.owner === owner) {
+            const updPayload = JSON.stringify(options.getUpdateStatus());
+            if ((state.needUpdateStatus || entry.lastUpdatePayload !== updPayload) && !stopped) {
+              const appliedUpd = await evaluate(entry, `globalThis.__agyPrismDeck?.applyUpdateStatus(${updPayload},${owner})??false`, target.id);
+              if (appliedUpd === 'superseded') return await supersede();
+              if (appliedUpd) entry.lastUpdatePayload = updPayload;
             }
           }
           if (typeof options.getHeatmap === 'function' && state?.owner === owner && state.heatmapWantData) {

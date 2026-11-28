@@ -1,5 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
-import { readdirSync, statSync, existsSync, realpathSync } from 'node:fs';
+import { readdirSync, statSync, existsSync, realpathSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, basename, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,10 +16,21 @@ import { summarizeStepModelState } from './model_routing.mjs';
 import { installAsyncHostRoutes, installEpipeGuard } from './host_bridge.mjs';
 import { createHeatmapAggregator } from './heatmap.mjs';
 import { getHeatmapRendererScript } from './heatmap_ui.mjs';
+import { createUpdater } from './updater.mjs';
 
 const settingsStore = createSettingsStore();
 const presentation = createPresentation();
 const heatmapAggregator = createHeatmapAggregator();
+const SIDECAR_DIR = dirname(fileURLToPath(import.meta.url));
+const PLUGIN_DIR = resolve(SIDECAR_DIR, '../..');
+
+function readCurrentPluginVersion() {
+  try {
+    const manifest = JSON.parse(readFileSync(join(PLUGIN_DIR, 'plugin.json'), 'utf8'));
+    if (manifest?.version) return String(manifest.version);
+  } catch {}
+  return '0.0.0';
+}
 
 const CONV_DIR = join(homedir(), '.gemini', 'antigravity', 'conversations');
 
@@ -1447,6 +1458,14 @@ const UI_HTML = `<!DOCTYPE html>
     ${renderCheckCard({ id: 'setting-optical-glass', key: 'opticalGlass', checked: DEFAULT_SETTINGS.opticalGlass })}
     ${renderCheckCard({ id: 'setting-optical-motion', key: 'opticalMotion', checked: DEFAULT_SETTINGS.opticalMotion })}
     ${renderCheckCard({ id: 'setting-optical-code', key: 'opticalCodeTools', checked: DEFAULT_SETTINGS.opticalCodeTools })}
+
+    <div class="settings-scope" data-settings-scope="updates" data-i18n="updatesSection"></div>
+    ${renderPickCard('updateChannel', [
+      ['stable', 'updateChannelStable', '<span data-i18n="updateChannelStable"></span>'],
+      ['preview', 'updateChannelPreview', '<span data-i18n="updateChannelPreview"></span>'],
+      ['dev', 'updateChannelDev', '<span data-i18n="updateChannelDev"></span>'],
+    ])}
+    ${renderCheckCard({ id: 'setting-auto-check-updates', key: 'autoCheckUpdates', checked: DEFAULT_SETTINGS.autoCheckUpdates })}
   </section>
 
   </main>
@@ -1933,6 +1952,14 @@ const isMain = (() => {
 
 if (isMain) installEpipeGuard();
 let deckInjector = null;
+let shutdownHandler = null;
+const hasSidecarRuntime = isMain && (process.env.ANTIGRAVITY_SIDECAR_WEB_PORT || process.env.ANTIGRAVITY_LS_ADDRESS);
+const updater = hasSidecarRuntime ? createUpdater({
+  pluginDir: PLUGIN_DIR,
+  currentVersion: readCurrentPluginVersion(),
+  getPrefs: () => settingsStore.read(),
+  onUpdateApplied: () => void shutdownHandler?.('self-update'),
+}) : null;
 if (isMain && process.env.ANTIGRAVITY_SIDECAR_WEB_PORT) {
   const { SidecarApp } = await import('sidecar_sdk');
   const app = new SidecarApp();
@@ -1947,24 +1974,35 @@ if (isMain && process.env.ANTIGRAVITY_SIDECAR_WEB_PORT) {
   app.api('/api/heatmap', (data) => heatmapAggregator.getSnapshot({ force: data?.force === '1' || data?.force === true }), 'GET');
   app.api('/api/settings', () => settingsStore.read(), 'GET');
   app.api('/api/settings', (data) => settingsStore.update(data), 'POST');
+  app.api('/api/update/status', (data) => updater.getStatus(data?.channel), 'GET');
+  app.api('/api/update/check', async (data) => await updater.checkForUpdates({ channel: data?.channel, manual: true }), 'POST');
+  app.api('/api/update/apply', async (data) => await updater.applyUpdate({ channel: data?.channel }), 'POST');
   app.run();
   installAsyncHostRoutes(app);
 }
-if (isMain && (process.env.ANTIGRAVITY_LS_ADDRESS || process.env.ANTIGRAVITY_SIDECAR_WEB_PORT)) {
+if (hasSidecarRuntime) {
   const injector = deckInjector = startDeckInjector(inspectConversation, {
     getHeatmap: (force) => heatmapAggregator.getSnapshot({ force }),
     getPrefs: () => settingsStore.read(),
     updateSettings: (patch) => settingsStore.update(patch),
+    getUpdateStatus: () => updater.getStatus(),
+    runUpdateAction: async (action) => {
+      if (action?.type === 'apply') return await updater.applyUpdate({ channel: action.channel });
+      return await updater.checkForUpdates({ channel: action?.channel, manual: true });
+    },
   });
+  updater?.startScheduler();
   let stopping = false;
   const shutdown = async (reason) => {
     if (stopping) return;
     stopping = true;
     stopWatching();
+    updater?.stopScheduler();
     console.log('[agy-prism-ui] restarting/stopping:', reason);
     try { await injector.stop(); }
     finally { process.exit(0); }
   };
-  const stopWatching = startSelfReloadWatcher(dirname(fileURLToPath(import.meta.url)), () => void shutdown('plugin files changed'));
+  shutdownHandler = shutdown;
+  const stopWatching = startSelfReloadWatcher(SIDECAR_DIR, () => void shutdown('plugin files changed'));
   for (const signal of ['SIGTERM', 'SIGINT']) process.once(signal, () => void shutdown(signal));
 }

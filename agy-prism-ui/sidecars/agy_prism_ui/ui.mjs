@@ -68,6 +68,9 @@ export function createPresentation(turnFactory = createTurnPresentation) {
       optCrystal: 'Frost', optAlabaster: 'Ivory', optObsidian: 'Noir', optWarm: 'Graphite', optNative: 'Native',
       opticalPrismRim: 'Gemini prism rim', opticalGlass: 'Frosted glass surfaces',
       opticalMotion: 'Stream fade-in & spring motion', opticalCodeTools: 'Sticky & foldable code',
+      updatesSection: 'Updates', updateChannel: 'Release channel',
+      updateChannelStable: 'Stable', updateChannelPreview: 'Preview', updateChannelDev: 'Dev',
+      autoCheckUpdates: 'Auto-check at 09:00 & 19:00',
     },
     'zh-CN': {
       cache: '缓存', turn0: '首轮', read: '读取', think: '思考', write: '写入',
@@ -134,6 +137,9 @@ export function createPresentation(turnFactory = createTurnPresentation) {
       optCrystal: '白昼', optAlabaster: '晨光', optObsidian: '午夜', optWarm: '暮色', optNative: '原生',
       opticalPrismRim: 'Gemini 棱镜流光', opticalGlass: '通透玻璃质感',
       opticalMotion: '流式输出渐现动效', opticalCodeTools: '长代码块折叠与吸顶栏',
+      updatesSection: '软件更新', updateChannel: '更新通道',
+      updateChannelStable: '正式版', updateChannelPreview: '预览版', updateChannelDev: '开发版',
+      autoCheckUpdates: '每日 09:00 / 19:00 自动检查更新',
     },
     'zh-TW': {
       cache: '快取', turn0: '首輪', read: '讀取', think: '思考', write: '寫入',
@@ -200,14 +206,22 @@ export function createPresentation(turnFactory = createTurnPresentation) {
       optCrystal: '白晝', optAlabaster: '晨光', optObsidian: '午夜', optWarm: '暮色', optNative: '原生',
       opticalPrismRim: 'Gemini 稜鏡流光', opticalGlass: '通透玻璃質感',
       opticalMotion: '串流輸出漸現動效', opticalCodeTools: '長程式碼摺疊與吸頂欄',
+      updatesSection: '軟體更新', updateChannel: '更新通道',
+      updateChannelStable: '正式版', updateChannelPreview: '預覽版', updateChannelDev: '開發版',
+      autoCheckUpdates: '每日 09:00 / 19:00 自動檢查更新',
     },
   };
+  const SUPPORTED_LOCALES = ['en', 'zh-CN', 'zh-TW'];
+  function localeWidthClass(lang = 'en') {
+    return String(lang || '').toLowerCase().startsWith('zh') ? 'compact' : 'wide';
+  }
   function locale(prefs = {}, candidates = []) {
     if (dictionaries[prefs.language]) return prefs.language;
     for (const raw of candidates) {
       const value = String(raw || '').toLowerCase().replace(/_/g, '-');
       if (!value) continue;
       if (value.startsWith('zh')) return /hant|tw|hk|mo/.test(value) ? 'zh-TW' : 'zh-CN';
+      if (value.startsWith('ja') && dictionaries.ja) return 'ja';
       if (value.startsWith('en')) return 'en';
     }
     return 'en';
@@ -407,6 +421,7 @@ export function createPresentation(turnFactory = createTurnPresentation) {
     root.dataset.highlightActiveModel = prefs.highlightActiveModel === true ? 'true' : 'false';
     const language = systemLocale(prefs);
     root.dataset.language = language;
+    root.dataset.langWidth = localeWidthClass(language);
     const t = dictionaries[language];
     const settingsLanguage = dictionaries[prefs.settingsLanguage] ? prefs.settingsLanguage : 'zh-CN';
     const settings = root.querySelector('.settings');
@@ -952,7 +967,7 @@ export function createPresentation(turnFactory = createTurnPresentation) {
       + `</div>`
       + breakdownHtml;
   }
-  return { version: 72, dictionaries, locale, systemLocale, apply, appearance, formatReset, escapeHtml, formatTokens, cacheTooltip, cacheView, contextTooltips, renderContextTooltips, quotaTooltip, applyQuotaTooltips, alertView, renderAlerts, generationText, generationMarkup, renderGeneration, historyMarkup, renderHistory, renderSidebarHistory, parseComposerOrchestrator, resolveActiveOrchestratorModel, stepModelView, renderStepModelPopover, renderSidebarStepModel, ...turnMethods };
+  return { version: 73, SUPPORTED_LOCALES, localeWidthClass, dictionaries, locale, systemLocale, apply, appearance, formatReset, escapeHtml, formatTokens, cacheTooltip, cacheView, contextTooltips, renderContextTooltips, quotaTooltip, applyQuotaTooltips, alertView, renderAlerts, generationText, generationMarkup, renderGeneration, historyMarkup, renderHistory, renderSidebarHistory, parseComposerOrchestrator, resolveActiveOrchestratorModel, stepModelView, renderStepModelPopover, renderSidebarStepModel, ...turnMethods };
 }
 
-export const getPresentationScript = () => `if (globalThis.__agyPrismPresentation?.version !== 72) globalThis.__agyPrismPresentation = (${createPresentation.toString()})(${createTurnPresentation.toString()});`;
+export const getPresentationScript = () => `if (globalThis.__agyPrismPresentation?.version !== 73) globalThis.__agyPrismPresentation = (${createPresentation.toString()})(${createTurnPresentation.toString()});`;

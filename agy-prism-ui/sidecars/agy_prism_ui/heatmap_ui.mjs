@@ -88,6 +88,23 @@ export function createHeatmapRenderer() {
 
   const DEFAULT_THEME = 'blue';
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const SUPPORTED_HM_LOCALES = ['zh-CN'];
+  const HM_I18N = {
+    'zh-CN': {
+      noActivity: '0（无活动）',
+      refresh: '刷新',
+      close: '关闭',
+      appearance: '外观',
+      updates: '更新',
+    },
+  };
+  function resolveHmLang(prefs = null) {
+    const req = String(prefs?.language || '');
+    return HM_I18N[req] ? req : 'zh-CN';
+  }
+  function hmT(lang, key) {
+    return HM_I18N[lang]?.[key] || HM_I18N['zh-CN'][key] || key;
+  }
 
   function esc(v) {
     return String(v ?? '')
@@ -176,6 +193,93 @@ export function createHeatmapRenderer() {
     if (!scale) return '';
     const thr = Array.isArray(scale.thresholds) ? scale.thresholds.join(',') : '';
     return `${scale.levels || 0}:${scale.min || 0}:${scale.max || 0}:${thr}`;
+  }
+
+  function getUpdateSignature(upd) {
+    if (!upd) return '';
+    return [
+      upd.currentVersion || '',
+      upd.channel || '',
+      upd.autoCheckUpdates ? 1 : 0,
+      upd.state || '',
+      upd.updateAvailable ? 1 : 0,
+      upd.actionKind || '',
+      upd.latest?.tag || '',
+      upd.lastCheckedAt || 0,
+      upd.error || '',
+    ].join('|');
+  }
+
+  function fmtCheckTime(ms) {
+    const v = Number(ms) || 0;
+    if (!v) return '尚未检查';
+    const d = new Date(v);
+    if (!Number.isFinite(d.getTime())) return '尚未检查';
+    const p = n => String(n).padStart(2, '0');
+    return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  }
+
+  const CHANNEL_NAMES = { stable: '正式版', preview: '预览版', dev: '开发版' };
+
+  function buildUpdatePanelHtml({ updateStatus, prefs, updOpen, hasUpdateControl }) {
+    if (!hasUpdateControl) return '';
+    const upd = updateStatus || {};
+    const curVer = String(upd.currentVersion || '2.0.3').replace(/^v/i, '');
+    const channel = ['stable', 'preview', 'dev'].includes(prefs?.updateChannel || upd.channel) ? (prefs?.updateChannel || upd.channel) : 'stable';
+    const autoCheck = prefs?.autoCheckUpdates !== undefined ? prefs.autoCheckUpdates !== false : upd.autoCheckUpdates !== false;
+    const latest = upd.latest || null;
+    const isChecking = Boolean(upd.checking || upd.state === 'checking');
+    const isApplying = Boolean(upd.applying || upd.state === 'applying');
+    const isApplied = upd.state === 'applied';
+    const hasBadge = Boolean(upd.updateAvailable && !isApplying && !isApplied);
+
+    let statusTone = '';
+    let statusText = '点击「立即检查」获取最新版本';
+    if (isApplying) {
+      statusTone = 'info';
+      statusText = `正在下载并热更新 ${latest?.tag || ''}…`;
+    } else if (isApplied) {
+      statusTone = 'ok';
+      statusText = `已更新至 ${upd.appliedVersion || latest?.tag || ''}，正在热重载…`;
+    } else if (isChecking) {
+      statusTone = 'info';
+      statusText = `正在检查 ${CHANNEL_NAMES[channel]} 更新…`;
+    } else if (upd.error) {
+      statusTone = 'err';
+      statusText = `检查/更新失败：${upd.error}`;
+    } else if (upd.updateAvailable && latest) {
+      statusTone = 'avail';
+      statusText = upd.actionKind === 'switch'
+        ? `可切换至${CHANNEL_NAMES[channel]} ${latest.tag}`
+        : `发现新版本 ${latest.tag}`;
+    } else if (upd.state === 'up-to-date' || upd.lastCheckedAt > 0) {
+      statusTone = 'ok';
+      statusText = `当前已是最新（${latest?.tag || ('v' + curVer)}）`;
+    }
+
+    const nextText = autoCheck ? `下次自动：${upd.nextCheckLabel || '09:00 / 19:00'}` : '已关闭自动检查';
+    const metaText = `上次：${fmtCheckTime(upd.lastCheckedAt)} · ${nextText}`;
+    const applyLabel = isApplying ? '更新中…' : (upd.actionKind === 'switch' ? '一键切换' : '一键更新');
+
+    return `<div class="hm-upd-wrap">`
+      + `<button type="button" class="hm-btn hm-upd-btn" data-hm-action="update-toggle" aria-expanded="${updOpen ? 'true' : 'false'}">更新${hasBadge ? '<span class="hm-upd-dot" aria-hidden="true"></span>' : ''}</button>`
+      + `<div class="hm-upd-pop" data-open="${updOpen ? 'true' : 'false'}" aria-hidden="${updOpen ? 'false' : 'true'}">`
+      + `  <div class="hm-upd-head"><span class="hm-upd-ver">当前 v${esc(curVer)}</span><span class="hm-upd-ch">${esc(CHANNEL_NAMES[channel] || channel)}</span></div>`
+      + `  <div class="hm-opt-row"><span class="hm-opt-lbl">发行通道</span><span class="hm-opt-picks">`
+      + `    <button type="button" class="hm-opt-pick" data-upd-channel="stable" data-active="${channel === 'stable'}">正式版</button>`
+      + `    <button type="button" class="hm-opt-pick" data-upd-channel="preview" data-active="${channel === 'preview'}">预览版</button>`
+      + `    <button type="button" class="hm-opt-pick" data-upd-channel="dev" data-active="${channel === 'dev'}">开发版</button>`
+      + `  </span></div>`
+      + `  <label class="hm-opt-chk"><input type="checkbox" data-upd-chk="autoCheckUpdates"${autoCheck ? ' checked' : ''}/><span>每日 09:00 / 19:00 自动检查更新</span></label>`
+      + `  <div class="hm-upd-status" data-tone="${statusTone}"><div>${esc(statusText)}</div><div class="hm-upd-meta">${esc(metaText)}</div>`
+      + (latest?.summary ? `<div class="hm-upd-summary">${esc(latest.summary)}</div>` : '')
+      + (latest?.htmlUrl ? `<a class="hm-upd-link" href="${esc(latest.htmlUrl)}" target="_blank" rel="noopener">查看 Release 详情 ↗</a>` : '')
+      + `  </div>`
+      + `  <div class="hm-upd-actions">`
+      + (upd.updateAvailable && !isApplied ? `<button type="button" class="hm-btn hm-btn-primary" data-hm-action="update-apply"${isApplying ? ' disabled' : ''}>${applyLabel}</button>` : '')
+      + `    <button type="button" class="hm-btn" data-hm-action="update-check"${isChecking || isApplying ? ' disabled' : ''}>${isChecking ? '检查中…' : '立即检查'}</button>`
+      + `  </div>`
+      + `</div></div>`;
   }
 
   function fmtScaleBound(n) {
@@ -841,7 +945,7 @@ export function createHeatmapRenderer() {
       + `</svg>`;
   }
 
-  function buildFullHtml(data, { source = 'all', themeName = loadSavedTheme(), dark = detectDarkMode(), showClose = true, prefs = null, optOpen = false, hasOpticalControl = false } = {}) {
+  function buildFullHtml(data, { source = 'all', themeName = loadSavedTheme(), dark = detectDarkMode(), showClose = true, prefs = null, optOpen = false, hasOpticalControl = false, updateStatus = null, updOpen = false, hasUpdateControl = false } = {}) {
     const theme = THEMES[themeName] || THEMES[DEFAULT_THEME];
     const activeSource = ['all', 'app', 'ide', 'cli'].includes(source) ? source : 'all';
     const bucket = data?.sources?.[activeSource] || data?.sources?.all;
@@ -1018,15 +1122,27 @@ export function createHeatmapRenderer() {
           box-shadow: inset 0 1px 0 ${dark ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.88)'}, 0 1px 3px rgba(15, 23, 42, 0.05), 0 8px 20px -10px rgba(15, 35, 75, 0.08);
           transition: border-color 180ms ease, box-shadow 180ms ease;
         }
-        .hm-opt-wrap {
+        .hm-opt-wrap, .hm-upd-wrap {
           position: relative;
+        }
+        .hm-upd-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+        }
+        .hm-upd-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: ${accent};
+          flex-shrink: 0;
         }
         .hm-btn[aria-expanded="true"] {
           border-color: ${accent};
           color: ${accent};
           background: color-mix(in srgb, ${accent} 10%, var(--card, ${dark ? '#171c28' : '#ffffff'}));
         }
-        .hm-opt-pop {
+        .hm-opt-pop, .hm-upd-pop {
           position: absolute;
           top: calc(100% + 8px);
           right: 0;
@@ -1050,7 +1166,8 @@ export function createHeatmapRenderer() {
           pointer-events: none;
           transition: opacity 180ms cubic-bezier(0.22, 1, 0.36, 1), transform 220ms cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 220ms;
         }
-        .hm-opt-pop[data-open="true"] {
+        .hm-upd-pop { width: 312px; }
+        .hm-opt-pop[data-open="true"], .hm-upd-pop[data-open="true"] {
           opacity: 1;
           transform: translateY(0) scale(1);
           visibility: visible;
@@ -1058,9 +1175,9 @@ export function createHeatmapRenderer() {
           transition: opacity 180ms cubic-bezier(0.22, 1, 0.36, 1), transform 220ms cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 0s;
         }
         @media (prefers-reduced-motion: reduce) {
-          .hm-opt-pop, .hm-kpi-pop { transition: none; }
+          .hm-opt-pop, .hm-upd-pop, .hm-kpi-pop { transition: none; }
         }
-        .hm-opt-pop::before {
+        .hm-opt-pop::before, .hm-upd-pop::before {
           content: '';
           position: absolute;
           inset: 0;
@@ -1073,6 +1190,55 @@ export function createHeatmapRenderer() {
           mask-composite: exclude;
           background: linear-gradient(135deg, rgba(56, 189, 248, 0.45), rgba(66, 133, 244, 0.34) 45%, rgba(155, 114, 203, 0.28) 85%, transparent);
           opacity: 0.28;
+        }
+        .hm-upd-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+        }
+        .hm-upd-ver { font-weight: 500; font-size: 12.5px; }
+        .hm-upd-ch {
+          font-size: 11px;
+          padding: 1px 7px;
+          border-radius: 99px;
+          background: color-mix(in srgb, ${accent} 14%, transparent);
+          color: ${accent};
+          font-weight: 500;
+        }
+        .hm-upd-status {
+          padding: 8px 10px;
+          border-radius: 9px;
+          background: color-mix(in srgb, var(--foreground, #0f172a) 4%, transparent);
+          border: 1px solid var(--border, ${dark ? 'rgba(148,163,184,0.14)' : 'rgba(15,23,42,0.08)'});
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          font-size: 11.5px;
+        }
+        .hm-upd-status[data-tone="avail"] {
+          border-color: color-mix(in srgb, ${accent} 38%, transparent);
+          background: color-mix(in srgb, ${accent} 8%, transparent);
+        }
+        .hm-upd-status[data-tone="err"] {
+          border-color: rgba(239, 68, 68, 0.4);
+          background: rgba(239, 68, 68, 0.08);
+          color: ${dark ? '#fca5a5' : '#b91c1c'};
+        }
+        .hm-upd-meta { font-size: 10.5px; color: var(--muted-foreground, ${dark ? '#94a3b8' : '#64748b'}); }
+        .hm-upd-summary { font-size: 11px; color: var(--muted-foreground, ${dark ? '#94a3b8' : '#64748b'}); line-height: 1.4; }
+        .hm-upd-link { font-size: 11px; color: ${accent}; text-decoration: none; align-self: flex-start; }
+        .hm-upd-link:hover { text-decoration: underline; }
+        .hm-upd-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+        .hm-btn[disabled] { opacity: 0.55; cursor: not-allowed; }
+        .hm-btn-primary {
+          background: ${accent};
+          border-color: ${accent};
+          color: #ffffff;
+        }
+        .hm-btn-primary:hover:not([disabled]) {
+          background: ${accent};
+          filter: brightness(1.06);
         }
         .hm-opt-row {
           display: flex;
@@ -1278,11 +1444,14 @@ ${getDayPopCss(accent, dark)}
       + `  <div class="hm-opt-row" style="justify-content:flex-end"><button type="button" class="hm-btn" data-hm-action="optical-reset" style="padding:3px 9px;font-size:11.5px">还原原生</button></div>`
       + `</div></div>` : '';
 
+    const updPanel = buildUpdatePanelHtml({ updateStatus, prefs, updOpen, hasUpdateControl });
+
     return `${style}<div class="hm-wrap"><div class="hm-container">`
       + `<div class="hm-topbar">`
       + `  <div class="hm-brand"><span class="hm-logo">${iconSvg}</span><span class="hm-title">Insights</span><span class="hm-badge">只读 · 本地会话日志</span></div>`
       + `  <div class="hm-actions">`
       + `    <span class="hm-live-pill"><span class="hm-live-dot"></span>Live</span>`
+      + updPanel
       + optPanel
       + `    <button type="button" class="hm-btn" data-hm-action="refresh">刷新</button>`
       + (showClose ? `<button type="button" class="hm-btn" data-hm-action="close">关闭</button>` : '')
@@ -1367,7 +1536,7 @@ ${getDayPopCss(accent, dark)}
         + `</div>`;
   }
 
-  function buildHomeHtml(data, { themeName = loadSavedTheme(), dark = detectDarkMode(), collapsed = loadHomeCollapsed() } = {}) {
+  function buildHomeHtml(data, { themeName = loadSavedTheme(), dark = detectDarkMode(), collapsed = loadHomeCollapsed(), updateStatus = null } = {}) {
     const theme = THEMES[themeName] || THEMES[DEFAULT_THEME];
     const accent = dark ? theme.accentDark : theme.accent;
     const bucket = data?.sources?.all;
@@ -1474,6 +1643,20 @@ ${getDayPopCss(accent, dark)}
           overflow: hidden;
           text-overflow: ellipsis;
         }
+        .hm-home-upd {
+          border: 1px solid color-mix(in srgb, ${accent} 32%, transparent);
+          background: color-mix(in srgb, ${accent} 10%, transparent);
+          color: ${accent};
+          border-radius: 99px;
+          padding: 2px 8px;
+          font: inherit;
+          font-size: 11px;
+          font-weight: 500;
+          cursor: pointer;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+        .hm-home-upd:hover { background: color-mix(in srgb, ${accent} 16%, transparent); }
         .hm-home-arrow {
           width: 26px;
           height: 26px;
@@ -1592,6 +1775,9 @@ ${getDayPopCss(accent, dark)}
     const arrowSvg = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>';
 
     const bodyHtml = buildHomeBodyHtml(bucket, { themeName, dark, collapsed });
+    const updPill = (updateStatus?.updateAvailable && updateStatus?.actionKind === 'upgrade' && updateStatus?.latest?.tag)
+      ? `<button type="button" class="hm-home-upd" data-hm-home="update" title="查看新版本并一键更新">新版本 ${esc(updateStatus.latest.tag)}</button>`
+      : '';
 
     return `${style}<div class="hm-home-card" data-collapsed="${collapsed ? '1' : '0'}">`
       + `<div class="hm-home-head">`
@@ -1599,7 +1785,7 @@ ${getDayPopCss(accent, dark)}
       + `    <button type="button" class="hm-home-open" data-hm-home="open" title="打开 Insights 完整视图"><span class="hm-home-ico">${iconSvg}</span><span class="hm-home-title">Insights</span></button>`
       + `    <span class="hm-home-stats">${esc(formatHomeStatsText(data, collapsed))}</span>`
       + `  </div>`
-      + `  <button type="button" class="hm-home-arrow" data-hm-home="toggle" title="${collapsed ? '展开近 12 周' : '收起为近 14 天'}" aria-expanded="${!collapsed}">${arrowSvg}</button>`
+      + `  <div style="display:inline-flex;align-items:center;gap:6px;flex-shrink:0">${updPill}<button type="button" class="hm-home-arrow" data-hm-home="toggle" title="${collapsed ? '展开近 12 周' : '收起为近 14 天'}" aria-expanded="${!collapsed}">${arrowSvg}</button></div>`
       + `</div>`
       + `<div class="hm-home-body">${bodyHtml}</div>`
       + `<div class="hm-hover-tip" data-hm-hover-tip hidden></div>`
@@ -1613,8 +1799,14 @@ ${getDayPopCss(accent, dark)}
       source: callbacks.source || 'all',
       theme: loadSavedTheme(),
       optOpen: false,
+      updOpen: false,
     });
     if (callbacks.source) state.source = callbacks.source;
+    if (typeof callbacks.updOpen === 'boolean' && callbacks.updOpen !== root._hmLastCbUpdOpen) {
+      root._hmLastCbUpdOpen = callbacks.updOpen;
+      state.updOpen = callbacks.updOpen;
+      if (state.updOpen) state.optOpen = false;
+    }
     const dark = detectDarkMode();
     const bucket = data?.sources?.[state.source] || data?.sources?.all;
     const days = bucket?.weeks52?.days || [];
@@ -1622,10 +1814,28 @@ ${getDayPopCss(accent, dark)}
     const monthly = bucket?.monthly || [];
     const prefs = callbacks.prefs || null;
     const hasOpticalControl = typeof callbacks.onUpdatePrefs === 'function';
-    const prefSig = prefs ? [prefs.opticalLightTheme, prefs.opticalDarkTheme, prefs.opticalPrismRim, prefs.opticalGlass, prefs.opticalMotion, prefs.opticalCodeTools].join(':') : '';
+    const hasUpdateControl = typeof callbacks.onCheckUpdate === 'function' || typeof callbacks.onApplyUpdate === 'function';
+    const prefSig = prefs ? [prefs.opticalLightTheme, prefs.opticalDarkTheme, prefs.opticalPrismRim, prefs.opticalGlass, prefs.opticalMotion, prefs.opticalCodeTools, prefs.updateChannel, prefs.autoCheckUpdates].join(':') : '';
     const scaleSig = getScaleSignature(bucket?.weeks52?.scale);
-    const renderKey = JSON.stringify([data?.generatedAt || 0, state.source, state.theme, dark, callbacks.showClose !== false, hasOpticalControl, prefSig, scaleSig]);
-    if (root._hmRenderKey === renderKey) return;
+    const updSig = getUpdateSignature(callbacks.updateStatus);
+    const renderKey = JSON.stringify([data?.generatedAt || 0, state.source, state.theme, dark, callbacks.showClose !== false, hasOpticalControl, hasUpdateControl, prefSig, scaleSig, updSig]);
+    if (root._hmRenderKey === renderKey) {
+      const uPop = root.querySelector('.hm-upd-pop');
+      const uBtn = root.querySelector('[data-hm-action="update-toggle"]');
+      const oPop = root.querySelector('.hm-opt-pop');
+      const oBtn = root.querySelector('[data-hm-action="optical-toggle"]');
+      if (uPop && uPop.getAttribute('data-open') !== (state.updOpen ? 'true' : 'false')) {
+        uPop.setAttribute('data-open', state.updOpen ? 'true' : 'false');
+        uPop.setAttribute('aria-hidden', state.updOpen ? 'false' : 'true');
+        uBtn?.setAttribute('aria-expanded', state.updOpen ? 'true' : 'false');
+      }
+      if (oPop && oPop.getAttribute('data-open') !== (state.optOpen ? 'true' : 'false')) {
+        oPop.setAttribute('data-open', state.optOpen ? 'true' : 'false');
+        oPop.setAttribute('aria-hidden', state.optOpen ? 'false' : 'true');
+        oBtn?.setAttribute('aria-expanded', state.optOpen ? 'true' : 'false');
+      }
+      return;
+    }
     root._hmRenderKey = renderKey;
 
     root.innerHTML = buildFullHtml(data, {
@@ -1636,6 +1846,9 @@ ${getDayPopCss(accent, dark)}
       prefs,
       optOpen: state.optOpen,
       hasOpticalControl,
+      updateStatus: callbacks.updateStatus || null,
+      updOpen: state.updOpen,
+      hasUpdateControl,
     });
 
     const fullCard = root.querySelector('[data-hm-full-card]');
@@ -1685,6 +1898,8 @@ ${getDayPopCss(accent, dark)}
 
     const optToggleBtn = root.querySelector('[data-hm-action="optical-toggle"]');
     const optPop = root.querySelector('.hm-opt-pop');
+    const updToggleBtn = root.querySelector('[data-hm-action="update-toggle"]');
+    const updPop = root.querySelector('.hm-upd-pop');
     const setOptOpen = (next) => {
       state.optOpen = Boolean(next);
       if (optPop) {
@@ -1695,13 +1910,50 @@ ${getDayPopCss(accent, dark)}
         optToggleBtn.setAttribute('aria-expanded', state.optOpen ? 'true' : 'false');
       }
     };
+    const setUpdOpen = (next) => {
+      state.updOpen = Boolean(next);
+      if (updPop) {
+        updPop.setAttribute('data-open', state.updOpen ? 'true' : 'false');
+        updPop.setAttribute('aria-hidden', state.updOpen ? 'false' : 'true');
+      }
+      if (updToggleBtn) {
+        updToggleBtn.setAttribute('aria-expanded', state.updOpen ? 'true' : 'false');
+      }
+      callbacks.onUpdOpenChange?.(state.updOpen);
+    };
     optToggleBtn?.addEventListener('click', (e) => {
       e.stopPropagation();
+      if (!state.optOpen && state.updOpen) setUpdOpen(false);
       setOptOpen(!state.optOpen);
     });
+    updToggleBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!state.updOpen && state.optOpen) setOptOpen(false);
+      setUpdOpen(!state.updOpen);
+    });
     optPop?.addEventListener('click', (e) => e.stopPropagation());
+    updPop?.addEventListener('click', (e) => e.stopPropagation());
     root.querySelector('.hm-wrap')?.addEventListener('click', () => {
       if (state.optOpen) setOptOpen(false);
+      if (state.updOpen) setUpdOpen(false);
+    });
+    for (const chBtn of root.querySelectorAll('[data-upd-channel]')) {
+      chBtn.addEventListener('click', () => {
+        const ch = chBtn.getAttribute('data-upd-channel');
+        if (!ch) return;
+        callbacks.onUpdatePrefs?.({ updateChannel: ch });
+        callbacks.onCheckUpdate?.(ch);
+      });
+    }
+    const updChk = root.querySelector('[data-upd-chk="autoCheckUpdates"]');
+    updChk?.addEventListener('change', () => {
+      callbacks.onUpdatePrefs?.({ autoCheckUpdates: updChk.checked });
+    });
+    root.querySelector('[data-hm-action="update-check"]')?.addEventListener('click', () => {
+      callbacks.onCheckUpdate?.(prefs?.updateChannel || callbacks.updateStatus?.channel || 'stable');
+    });
+    root.querySelector('[data-hm-action="update-apply"]')?.addEventListener('click', () => {
+      callbacks.onApplyUpdate?.(prefs?.updateChannel || callbacks.updateStatus?.channel || 'stable');
     });
     for (const btn of root.querySelectorAll('[data-opt-key]')) {
       btn.addEventListener('click', () => {
@@ -1740,14 +1992,15 @@ ${getDayPopCss(accent, dark)}
     const themeName = loadSavedTheme();
     const dark = detectDarkMode();
     let curCollapsed = loadHomeCollapsed();
-    const getHomeKey = (d, collapsedFlag) => JSON.stringify([
+    const getHomeKey = (d, collapsedFlag, upd = callbacks.updateStatus) => JSON.stringify([
       d?.generatedAt || 0,
       themeName,
       dark,
       collapsedFlag,
       getScaleSignature(d?.sources?.all?.weeks52?.scale),
+      getUpdateSignature(upd),
     ]);
-    const renderKey = getHomeKey(data, curCollapsed);
+    const renderKey = getHomeKey(data, curCollapsed, callbacks.updateStatus);
     if (root._hmHomeKey === renderKey) return;
     const shellKey = JSON.stringify([themeName, dark]);
     const liveCard = root.querySelector('.hm-home-card');
@@ -1760,7 +2013,7 @@ ${getDayPopCss(accent, dark)}
     root._hmHomeKey = renderKey;
     root._hmHomeShellKey = shellKey;
 
-    root.innerHTML = buildHomeHtml(data, { themeName, dark, collapsed: curCollapsed });
+    root.innerHTML = buildHomeHtml(data, { themeName, dark, collapsed: curCollapsed, updateStatus: callbacks.updateStatus || null });
 
     let curData = data;
     let curCallbacks = callbacks;
@@ -1778,6 +2031,9 @@ ${getDayPopCss(accent, dark)}
 
     root.querySelector('[data-hm-home="open"]')?.addEventListener('click', () => {
       curCallbacks?.onOpenFull?.();
+    });
+    root.querySelector('[data-hm-home="update"]')?.addEventListener('click', () => {
+      curCallbacks?.onOpenUpdate?.();
     });
     if (root._hmHomeNearCleanup) {
       root._hmHomeNearCleanup();
@@ -1871,6 +2127,23 @@ ${getDayPopCss(accent, dark)}
       }
       bodyEl.innerHTML = buildHomeBodyHtml(nextBucket, { themeName, dark, collapsed: nextCollapsed });
       bindHomeCells(getHomeCells(nextBucket, nextCollapsed), nextBucket);
+      const updSt = curCallbacks?.updateStatus;
+      const showUpd = Boolean(updSt?.updateAvailable && updSt?.actionKind === 'upgrade' && updSt?.latest?.tag);
+      let updBtn = root.querySelector('[data-hm-home="update"]');
+      if (showUpd) {
+        if (!updBtn && toggleBtn?.parentElement && typeof document !== 'undefined') {
+          updBtn = document.createElement('button');
+          updBtn.type = 'button';
+          updBtn.className = 'hm-home-upd';
+          updBtn.setAttribute('data-hm-home', 'update');
+          updBtn.title = '查看新版本并一键更新';
+          updBtn.addEventListener('click', () => curCallbacks?.onOpenUpdate?.());
+          toggleBtn.parentElement.insertBefore(updBtn, toggleBtn);
+        }
+        if (updBtn) updBtn.textContent = `新版本 ${updSt.latest.tag}`;
+      } else if (updBtn) {
+        updBtn.remove?.();
+      }
       return true;
     };
     root._hmUpdateHomeData = (nextData, nextCollapsed, nextCallbacks) => {
@@ -1896,7 +2169,7 @@ ${getDayPopCss(accent, dark)}
 
       curCollapsed = !curCollapsed;
       saveHomeCollapsed(curCollapsed);
-      root._hmHomeKey = getHomeKey(curData, curCollapsed);
+      root._hmHomeKey = getHomeKey(curData, curCollapsed, curCallbacks?.updateStatus);
 
       if (!updateBodyUi(curCollapsed)) {
         root._hmHomeKey = '';
@@ -1982,7 +2255,10 @@ ${getDayPopCss(accent, dark)}
   }
 
   return {
-    version: 25,
+    version: 26,
+    SUPPORTED_HM_LOCALES,
+    resolveHmLang,
+    hmT,
     THEMES,
     DEFAULT_THEME,
     fmtTok,
@@ -1996,4 +2272,4 @@ ${getDayPopCss(accent, dark)}
   };
 }
 
-export const getHeatmapRendererScript = () => `if (globalThis.__agyPrismHeatmapUI?.version !== 25) globalThis.__agyPrismHeatmapUI = (${createHeatmapRenderer.toString()})();`;
+export const getHeatmapRendererScript = () => `if (globalThis.__agyPrismHeatmapUI?.version !== 26) globalThis.__agyPrismHeatmapUI = (${createHeatmapRenderer.toString()})();`;

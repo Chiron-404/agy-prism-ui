@@ -6,6 +6,30 @@ This file documents user-facing feature additions, visual refinements, and stabi
 
 ---
 
+## [v2.0.3](https://github.com/Chiron-404/agy-prism-ui/releases/tag/v2.0.3) — 2026-11-28
+
+### 中文
+
+- **Overview Telemetry 悬停与箭头动效对齐原生**：对齐 Antigravity 原生 `Subagents` / `Artifacts` 交互风格，悬停时取消灰底并提亮标题与状态为黑色实显，折叠箭头紧跟在徽章右侧、平时隐藏并在悬停/聚焦时渐显及旋转 `90°`。
+- **修复上下文与速率浮窗文字挤占**：适当放宽浮窗宽度（并针对英文等长文本语言自动预留宽度），精简浮窗内重复会话前缀、改用弹性换行排版，解决长耗时与均速（`tok/s`）重叠问题，同时为 `v2.1.0` 多语言适配预留布局与词典基础。
+- **内置三通道更新器与一键热更新**：
+  - 在 Insights 顶栏新增独立 **「更新」** 按钮与毛玻璃浮窗（检测到新版本时在首页卡片与顶栏显示轻提示），支持 **正式版（`stable`）**、**预览版（`preview`）** 与 **开发版（`dev`）** 三条通道切换；
+  - 支持每日 **09:00 / 19:00** 定时自动检查（含休眠/重启错过时段补检，可随时开关），也可点击「立即检查」手动检查；
+  - 发现新版或跨通道切换时提供 **「一键更新 / 一键切换」**，校验 SHA-256 后自动下载、安全替换并热重载（保留非 ASCII 路径兼容与异常自动回滚）。
+- **新增 AI 开发者参考指南**：新增 [AI_DEV_GUIDE.md](./AI_DEV_GUIDE.md)，梳理模块结构、运行约束与可直接复制的 AI Agent 开发提示词。
+
+### English
+
+- **Native `Subagents`/`Artifacts`-Style Hover & Chevron on Overview Telemetry**: Removed the hover gray background, sharpened the title/badge hover contrast to full opacity, and moved the chevron inline right next to the badge so it stays hidden at rest and fades in + rotates `90°` on hover/focus/expand.
+- **Fixed Context & Speed Popover Text Overlap (+ v2.1.0 i18n Headroom)**: Widened the popover (`264px` / `278px` for wider languages), hid the redundant session label prefix inside the compact summary row, and switched the request/session speed row to flex-wrap with ellipsis clamping to eliminate overlaps and prepare layout headroom for upcoming `v2.1.0` multilingual support.
+- **Built-in 3-Channel Updater & One-Click Hot Update**:
+  - Added an **Update** button and frosted-glass popover in the Insights topbar (plus a subtle Home banner pill when an upgrade is ready), supporting **Stable**, **Preview**, and **Dev** channels;
+  - Supports scheduled daily checks at **09:00 & 19:00** (including startup catch-up if missed, toggleable) as well as manual checks;
+  - Provides **One-Click Update / Switch** with SHA-256 verification, pure-Node ZIP extraction, automatic non-ASCII Windows sidecar preservation, rollback protection, and instant hot-reload.
+- **Added AI Developer Guide**: Added [AI_DEV_GUIDE.md](./AI_DEV_GUIDE.md) documenting the architecture, serialization invariants, and a copy-ready prompt for AI coding agents.
+
+---
+
 ## [v2.0.2](https://github.com/Chiron-404/agy-prism-ui/releases/tag/v2.0.2) — 2026-11-28
 
 ### 中文
