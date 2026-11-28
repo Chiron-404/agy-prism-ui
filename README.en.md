@@ -111,6 +111,23 @@ node --test "test/*.test.mjs"
 
 Browser regression tests are optional. With Playwright and Chromium installed, run `node test/browser-regressions.mjs` separately. For architecture invariants and copy-ready AI agent prompts, see [AI_DEV_GUIDE.md](./AI_DEV_GUIDE.md).
 
+## Modification, Forking & Redistribution
+
+### Local Editing & Hot-Reload Guide
+
+- **Source layout**: Core logic lives under `agy-prism-ui/sidecars/agy_prism_ui/` (zero-dependency pure Node.js 24+ ESM). After making edits, run `node --test "test/*.test.mjs"` in the repository root, then run `.\install.bat` (or `./install.sh` on macOS/Linux) to sync to the local plugin directory; the running sidecar automatically hot-reloads within ~2–3 seconds.
+- **Serialization invariants**: Factory functions in `ui.mjs`, `optical_theme.mjs`, `overview_ui.mjs`, and `heatmap_ui.mjs` are serialized via `.toString()` into the Electron renderer. Keep all helpers strictly self-contained inside each factory (no module-scope references) and bump both its `version` property and `get*Script()` guard when modified. See [AI_DEV_GUIDE.md](./AI_DEV_GUIDE.md) for all invariants and copy-ready AI coding agent prompts.
+- **Non-invasive extension path**: If you prefer extending the UI without modifying core source files directly, switch to the **`dev` release channel (`v2.x.x-dev`)** via the Insights **Update** popover to unlock the runtime extension bus (`globalThis.__agyPrismExt`) and custom CSS/override controls.
+
+### Redistribution & Derivative Licensing (GNU GPL-3.0)
+
+- **Explicit authorization**: This project is licensed under **[GNU GPL-3.0](./LICENSE)**. Provided you comply with the license terms, you are explicitly permitted—**without needing additional permission**—to copy, modify, fork, use personally or commercially, and redistribute modified or packaged derivative versions.
+- **Conditions for redistribution**:
+  1. **Copyleft (Same License)**: Any derivative work, modified version, or redistributed bundle containing code from this project must be licensed as a whole under **GNU GPL-3.0**, with complete corresponding source code made available to recipients.
+  2. **Preserve Notices & Attributions**: Do not remove or alter [LICENSE](./LICENSE), [NOTICE](./NOTICE), or [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md). You must retain all upstream notices (including the MIT copyright for `Lumidarin/agy-capsule`) as well as attribution to **IMMO-CHIRON** ([@Chiron-404](https://github.com/Chiron-404)).
+  3. **Document Changes & Avoid Endorsement Misuse**: Prominently state what you changed relative to this repository, and do not imply official status or endorsement by this project or any upstream author. If distributing an independent fork, update `name` / `displayName` in `agy-prism-ui/plugin.json` and `DEFAULT_REPO` in `updater.mjs` so your builds do not collide with this repository's update channels.
+  4. **No Warranty**: Provided "AS IS" without warranty of any kind; redistributors assume responsibility for their own modifications and releases.
+
 ## Contributing
 
 Issues and pull requests are welcome. See the [contribution guide](./CONTRIBUTING.md#english).

@@ -111,6 +111,23 @@ node --test "test/*.test.mjs"
 
 浏览器回归是可选的。装好 Playwright 和 Chromium 后，可单独运行 `node test/browser-regressions.mjs`。面向开发者与 AI Agent 的架构规范及提示词见 [AI_DEV_GUIDE.md](./AI_DEV_GUIDE.md)。
 
+## 二次开发、代码改动与分发授权
+
+### 本地改动与热重载引导
+
+- **核心源码路径**：主要逻辑均在 `agy-prism-ui/sidecars/agy_prism_ui/` 下（纯 Node.js 24+ ESM、零第三方依赖）。修改代码后，先在仓库根目录运行 `node --test "test/*.test.mjs"` 确认测试全部通过，再执行 `.\install.bat`（macOS / Linux 执行 `./install.sh`）同步至本地插件目录，Sidecar 会在约 `2–3` 秒内自动触发热重载。
+- **关键注入约束**：`ui.mjs`、`optical_theme.mjs`、`overview_ui.mjs`、`heatmap_ui.mjs` 中的工厂函数会通过 `.toString()` 序列化并注入桌面端渲染层，内部禁止引用模块顶层变量或外部 import；改动渲染工厂时请同步递增其 `version` 返回值与对应的 `get*Script()` 版本守卫。完整开发红线与可直接复制给 AI Coding Agent 的开发提示词见 [AI_DEV_GUIDE.md](./AI_DEV_GUIDE.md)。
+- **轻量化扩展方式**：若您希望在不直接修改核心文件的前提下扩展卡片、底栏胶囊或样式，可在 Insights 顶栏「更新」浮窗中切换至 **`dev` 通道（`v2.x.x-dev`）**，通过预留的运行时扩展总线 `globalThis.__agyPrismExt` 与设置页中的自定义 CSS/覆写开关进行扩展。
+
+### 二次修改与二次分发授权（GNU GPL-3.0）
+
+- **明确授权**：本项目整体依据 **[GNU GPL-3.0](./LICENSE)** 协议开源授权。在遵守协议条款的前提下，您**无需额外征询作者许可**，即可自由复制、修改、Fork、用于个人或商业用途，以及打包发布或二次分发您的修改版本。
+- **二次分发须遵守以下条件**：
+  1. **同协议开源（Copyleft）**：任何包含或基于本项目代码的衍生版本、修改版或再分发安装包，整体必须同样以 **GNU GPL-3.0** 协议开源发布，并向接收方完整提供对应的可构建源代码。
+  2. **完整保留版权与声明**：不得删除或篡改仓库内的 [LICENSE](./LICENSE)、[NOTICE](./NOTICE) 与 [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)，须完整保留上游原作者（含 `Lumidarin/agy-capsule` 的 MIT 版权声明）以及 **IMMO-CHIRON** ([@Chiron-404](https://github.com/Chiron-404)) 的署名记录。
+  3. **显著说明改动并区分身份**：请在您的仓库、文档或 Release 说明中明确标注对原项目所做的修改内容，且不得以本仓库或任何上游原作者的官方名义进行宣传、误导或背书声明；若作为独立插件公开发行，建议同步修改 `agy-prism-ui/plugin.json` 中的 `name` / `displayName` 以及 `updater.mjs` 中的默认更新仓库 `DEFAULT_REPO`，避免与本项目的更新通道混用冲突。
+  4. **按现状提供（无担保）**：本软件按「现状（AS IS）」提供，不附带任何明示或默示担保；二次分发者须自行承担其新增改动与发行包的维护及责任。
+
 ## 贡献
 
 欢迎提 Issue 和 PR，详见[贡献指南](./CONTRIBUTING.md#中文)。
