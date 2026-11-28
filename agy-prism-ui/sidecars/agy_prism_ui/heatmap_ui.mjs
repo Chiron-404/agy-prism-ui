@@ -1942,7 +1942,9 @@ ${getDayPopCss(accent, dark)}
         const ch = chBtn.getAttribute('data-upd-channel');
         if (!ch) return;
         callbacks.onUpdatePrefs?.({ updateChannel: ch });
-        callbacks.onCheckUpdate?.(ch);
+        if (!callbacks.updateStatus?.lastCheckedAt || callbacks.updateStatus?.state === 'error') {
+          callbacks.onCheckUpdate?.(ch);
+        }
       });
     }
     const updChk = root.querySelector('[data-upd-chk="autoCheckUpdates"]');

@@ -106,6 +106,86 @@ export function extractSha256(asset, body = '') {
   return bm ? bm[1].toLowerCase() : '';
 }
 
+function decodeHtmlEntities(str = '') {
+  return String(str || '')
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#(?:x0*27|0*39);|&apos;/gi, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&#(\d+);/g, (_, dec) => {
+      const code = Number(dec);
+      return Number.isInteger(code) && code >= 0 && code <= 0x10ffff ? String.fromCodePoint(code) : _;
+    })
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => {
+      const code = Number.parseInt(hex, 16);
+      return Number.isInteger(code) && code >= 0 && code <= 0x10ffff ? String.fromCodePoint(code) : _;
+    })
+    .replace(/&amp;/gi, '&');
+}
+
+export function parseReleasesAtom(xml = '', repo = DEFAULT_REPO) {
+  const text = String(xml || '');
+  if (!text.trim()) return [];
+  const entries = [...text.matchAll(/<entry\b[^>]*>([\s\S]*?)<\/entry>/gi)];
+  const out = [];
+  for (const match of entries) {
+    const entry = match[1] || '';
+    const linkMatch = /<link\b[^>]*href=["']([^"']+)["'][^>]*>/i.exec(entry);
+    const htmlUrl = decodeHtmlEntities(linkMatch?.[1] || '').trim();
+    const tagMatch = /\/releases\/tag\/([^/?#]+)/i.exec(htmlUrl);
+    if (!tagMatch) continue;
+    let tag = tagMatch[1];
+    try { tag = decodeURIComponent(tag); } catch {}
+    if (!parseReleaseVersion(tag)) continue;
+
+    const titleRaw = /<title\b[^>]*>([\s\S]*?)<\/title>/i.exec(entry)?.[1] || '';
+    const updatedRaw = /<updated\b[^>]*>([\s\S]*?)<\/updated>/i.exec(entry)?.[1] || '';
+    const contentRaw = /<content\b[^>]*>([\s\S]*?)<\/content>/i.exec(entry)?.[1] || '';
+
+    const name = decodeHtmlEntities(titleRaw).replace(/<[^>]+>/g, '').trim() || tag;
+    const publishedAt = decodeHtmlEntities(updatedRaw).replace(/<[^>]+>/g, '').trim();
+    const decodedHtml = decodeHtmlEntities(contentRaw);
+    const shaMatch = /SHA-256[\s\S]{0,120}?([0-9a-f]{64})/i.exec(decodedHtml);
+    const sha256 = shaMatch ? shaMatch[1].toLowerCase() : '';
+    const zipMatch = /(agy-prism-ui-v[0-9A-Za-z._-]+\.zip)/i.exec(decodedHtml);
+    const assetName = zipMatch ? zipMatch[1] : `agy-prism-ui-${tag}.zip`;
+
+    const plainBody = decodeHtmlEntities(
+      decodedHtml
+        .replace(/<blockquote\b[\s\S]*?<\/blockquote>/gi, '')
+        .replace(/<li\b[^>]*>/gi, '\n- ')
+        .replace(/<br\s*\/?>|<\/(?:p|div|li|h[1-6]|tr)>/gi, '\n')
+        .replace(/<[^>]+>/g, '')
+    )
+      .split(/\r?\n/)
+      .map(l => l.replace(/\s+/g, ' ').trim())
+      .filter(Boolean)
+      .join('\n');
+    const body = sha256 ? `${plainBody}\nSHA-256: ${sha256}`.trim() : plainBody;
+    const parsed = parseReleaseVersion(tag);
+    out.push({
+      tag_name: tag,
+      name,
+      prerelease: (parsed?.channel || 'stable') !== 'stable',
+      draft: false,
+      published_at: publishedAt,
+      html_url: htmlUrl || `https://github.com/${repo}/releases/tag/${encodeURIComponent(tag)}`,
+      body,
+      assets: [
+        {
+          name: assetName,
+          size: 0,
+          browser_download_url: `https://github.com/${repo}/releases/download/${encodeURIComponent(tag)}/${encodeURIComponent(assetName)}`,
+          digest: sha256 ? `sha256:${sha256}` : '',
+        },
+      ],
+    });
+  }
+  return out;
+}
+
 function summarizeReleaseBody(body = '') {
   const lines = String(body || '')
     .split(/\r?\n/)
@@ -396,7 +476,7 @@ export function createUpdater(options = {}) {
   const pollIntervalMs = options.pollIntervalMs ?? 60_000;
   const restartDelayMs = options.restartDelayMs ?? 350;
 
-  let persisted = { lastSlotByChannel: {}, lastCheckedAt: 0, lastCheckError: '', latestByChannel: {} };
+  let persisted = { lastSlotByChannel: {}, lastCheckedAt: 0, lastCheckError: '', latestByChannel: {}, etag: '', backoffUntil: 0 };
   try {
     if (existsSync(statePath)) {
       const raw = JSON.parse(readFileSync(statePath, 'utf8'));
@@ -406,6 +486,8 @@ export function createUpdater(options = {}) {
           lastCheckedAt: Number(raw.lastCheckedAt) || 0,
           lastCheckError: String(raw.lastCheckError || ''),
           latestByChannel: raw.latestByChannel && typeof raw.latestByChannel === 'object' ? raw.latestByChannel : {},
+          etag: typeof raw.etag === 'string' ? raw.etag : '',
+          backoffUntil: Number(raw.backoffUntil) || 0,
         };
       }
     }
@@ -481,10 +563,49 @@ export function createUpdater(options = {}) {
     };
   }
 
-  async function checkForUpdates({ channel } = {}) {
+  function markAllChannelSlots(ts) {
+    const slot = getCurrentScheduleSlot(ts);
+    for (const ch of VALID_CHANNELS) {
+      persisted.lastSlotByChannel[ch] = slot;
+    }
+  }
+
+  function storeReleases(releases, ts) {
+    persisted.latestByChannel = {
+      stable: selectReleaseForChannel(releases, 'stable'),
+      preview: selectReleaseForChannel(releases, 'preview'),
+      dev: selectReleaseForChannel(releases, 'dev'),
+    };
+    persisted.lastCheckedAt = ts;
+    persisted.lastCheckError = '';
+    persisted.backoffUntil = 0;
+    markAllChannelSlots(ts);
+  }
+
+  async function fetchReleasesFromAtom() {
+    const atomUrl = `https://github.com/${repo}/releases.atom`;
+    const res = await fetchImpl(atomUrl, {
+      headers: {
+        Accept: 'application/atom+xml, application/xml, text/xml',
+        'User-Agent': `agy-prism-ui/${currentVersion}`,
+      },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) throw new Error(`Atom feed HTTP ${res.status}`);
+    const xml = await res.text();
+    const parsed = parseReleasesAtom(xml, repo);
+    if (!parsed.length) throw new Error('Empty releases Atom feed');
+    return parsed;
+  }
+
+  async function checkForUpdates({ channel, manual = false, force = false } = {}) {
     const targetChannel = normalizeChannel(channel ?? activeChannel());
     if (checkPromise) {
       await checkPromise;
+      return getStatus(targetChannel);
+    }
+    const tsNow = now();
+    if (!manual && !force && !persisted.lastCheckError && persisted.lastCheckedAt > 0 && (tsNow - persisted.lastCheckedAt) < 60_000) {
       return getStatus(targetChannel);
     }
     checking = true;
@@ -493,30 +614,63 @@ export function createUpdater(options = {}) {
       try {
         if (typeof fetchImpl !== 'function') throw new Error('fetch is unavailable');
         const url = `https://api.github.com/repos/${repo}/releases?per_page=30`;
-        const res = await fetchImpl(url, {
-          headers: {
-            Accept: 'application/vnd.github+json',
-            'User-Agent': `agy-prism-ui/${currentVersion}`,
-          },
-          signal: AbortSignal.timeout(15_000),
-        });
-        if (!res.ok) throw new Error(`GitHub API HTTP ${res.status}`);
-        const releases = await res.json();
-        if (!Array.isArray(releases)) throw new Error('Invalid GitHub Releases response');
-        persisted.latestByChannel = {
-          stable: selectReleaseForChannel(releases, 'stable'),
-          preview: selectReleaseForChannel(releases, 'preview'),
-          dev: selectReleaseForChannel(releases, 'dev'),
+        const headers = {
+          Accept: 'application/vnd.github+json',
+          'User-Agent': `agy-prism-ui/${currentVersion}`,
         };
-        persisted.lastCheckedAt = now();
-        persisted.lastCheckError = '';
-        persisted.lastSlotByChannel[targetChannel] = getCurrentScheduleSlot(persisted.lastCheckedAt);
-        savePersisted();
-      } catch (err) {
-        const msg = err?.message || String(err);
-        runtimeError = msg;
-        persisted.lastCheckError = msg;
-        savePersisted();
+        const hasCached = persisted.latestByChannel && Object.keys(persisted.latestByChannel).length > 0;
+        if (persisted.etag && hasCached) {
+          headers['If-None-Match'] = persisted.etag;
+        }
+        let apiErrMsg = '';
+        try {
+          const res = await fetchImpl(url, {
+            headers,
+            signal: AbortSignal.timeout(15_000),
+          });
+          if (res.status === 304 && hasCached) {
+            const ts = now();
+            persisted.lastCheckedAt = ts;
+            persisted.lastCheckError = '';
+            persisted.backoffUntil = 0;
+            markAllChannelSlots(ts);
+            savePersisted();
+            return;
+          }
+          if (res.ok) {
+            const releases = await res.json();
+            if (!Array.isArray(releases)) throw new Error('Invalid GitHub Releases response');
+            persisted.etag = res.headers?.get?.('etag') || '';
+            storeReleases(releases, now());
+            savePersisted();
+            return;
+          }
+          if (res.status === 403 || res.status === 429) {
+            const resetSec = Number(res.headers?.get?.('x-ratelimit-reset') || 0);
+            const resetNote = resetSec > 0
+              ? ` (reset ${new Date(resetSec * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })})`
+              : '';
+            apiErrMsg = `GitHub API HTTP ${res.status}${resetNote}`;
+          } else {
+            apiErrMsg = `GitHub API HTTP ${res.status}`;
+          }
+        } catch (err) {
+          apiErrMsg = err?.message || String(err);
+        }
+
+        // Fall back to GitHub's rate-limit-free releases.atom feed when REST API fails or is throttled.
+        try {
+          const atomReleases = await fetchReleasesFromAtom();
+          storeReleases(atomReleases, now());
+          runtimeError = '';
+          savePersisted();
+        } catch (atomErr) {
+          const combined = apiErrMsg || atomErr?.message || String(atomErr);
+          runtimeError = combined;
+          persisted.lastCheckError = combined;
+          persisted.backoffUntil = now() + 15 * 60_000;
+          savePersisted();
+        }
       } finally {
         checking = false;
         checkPromise = null;
@@ -661,8 +815,10 @@ export function createUpdater(options = {}) {
     if (checking || applying) return false;
     const prefs = getPrefs();
     if (prefs?.autoCheckUpdates === false) return false;
+    const tsNow = now();
+    if (persisted.backoffUntil && tsNow < persisted.backoffUntil) return false;
     const channel = normalizeChannel(prefs?.updateChannel);
-    const slot = getCurrentScheduleSlot(now());
+    const slot = getCurrentScheduleSlot(tsNow);
     if (persisted.lastSlotByChannel?.[channel] === slot) return false;
     await checkForUpdates({ channel });
     return true;
