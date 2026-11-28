@@ -135,6 +135,125 @@ function dayKeyFromDate(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
+export function computeDynamicHeatmapScale(positiveValues = []) {
+  const sorted = (Array.isArray(positiveValues) ? positiveValues : [])
+    .map(Number)
+    .filter(v => Number.isFinite(v) && v > 0)
+    .sort((a, b) => a - b);
+
+  if (!sorted.length) {
+    return {
+      levels: 5,
+      min: 0,
+      max: 0,
+      gamma: 0.5,
+      thresholds: [],
+      assign: () => 0,
+    };
+  }
+
+  const minVal = sorted[0];
+  const maxVal = sorted[sorted.length - 1];
+
+  if (maxVal <= minVal) {
+    const levels = 4;
+    const roundVal = (raw) => (maxVal >= 100 ? Math.max(1, Math.round(raw)) : Number(raw.toPrecision(4)));
+    const rawThresholds = [
+      roundVal(maxVal * 0.25),
+      roundVal(maxVal * 0.5),
+      roundVal(maxVal * 0.75),
+      maxVal,
+    ];
+    const thresholds = [];
+    let prev = 0;
+    for (let i = 0; i < levels; i++) {
+      const val = i === levels - 1 ? maxVal : Math.max(prev, Math.min(maxVal, rawThresholds[i]));
+      thresholds.push(val);
+      prev = val;
+    }
+    return {
+      levels,
+      min: minVal,
+      max: maxVal,
+      gamma: 1,
+      thresholds,
+      assign: (t) => {
+        const v = Number(t);
+        return Number.isFinite(v) && v > 0 ? levels : 0;
+      },
+    };
+  }
+
+  const ratio = maxVal / minVal;
+  let levels;
+  if (ratio <= 3) levels = 4;
+  else if (ratio <= 12) levels = 5;
+  else if (ratio <= 45) levels = 6;
+  else if (ratio <= 140) levels = 7;
+  else levels = 8;
+
+  // Keep near-equal values in the same top tier while expanding [minVal, maxVal] once ratio >= 1.5x
+  const blend = ratio <= 1.05 ? 0 : Math.min(1, (ratio - 1.05) / 0.45);
+  const effMin = minVal * blend;
+  const refIdx = sorted.length >= 8 ? Math.floor((sorted.length - 1) * 0.90) : sorted.length - 2;
+  const upperBody = sorted[Math.max(0, Math.min(sorted.length - 2, refIdx))];
+  const outlierJump = maxVal / upperBody;
+
+  const roundBound = (raw) => (maxVal >= 100 ? Math.round(raw) : Number(raw.toPrecision(4)));
+  const thresholds = [];
+  let gamma;
+
+  if (sorted.length >= 4 && outlierJump > 8) {
+    // Isolate extreme top outliers in the highest tier so ordinary days keep full gradient resolution
+    const subCap = Math.min(maxVal * 0.99, Math.max(upperBody * 1.5, sorted[sorted.length - 2]));
+    const subLevels = levels - 1;
+    const bodyRatio = Math.max(1.01, subCap / minVal);
+    gamma = Math.max(0.40, Math.min(0.85, 0.85 - 0.16 * Math.log10(bodyRatio)));
+    const lo = Math.pow(effMin, gamma);
+    const hi = Math.pow(subCap, gamma);
+    const span = Math.max(1e-18, hi - lo);
+    let prev = 0;
+    for (let k = 1; k <= subLevels; k++) {
+      const raw = Math.pow(lo + (k / subLevels) * span, 1 / gamma);
+      const val = Math.max(prev, Math.min(subCap, roundBound(raw)));
+      thresholds.push(val);
+      prev = val;
+    }
+    thresholds.push(maxVal);
+  } else {
+    gamma = Math.max(0.38, Math.min(0.85, 0.85 - 0.16 * Math.log10(Math.max(1.01, ratio))));
+    const lo = Math.pow(effMin, gamma);
+    const hi = Math.pow(maxVal, gamma);
+    const span = Math.max(1e-18, hi - lo);
+    let prev = 0;
+    for (let k = 1; k <= levels; k++) {
+      const raw = k === levels ? maxVal : Math.pow(lo + (k / levels) * span, 1 / gamma);
+      const val = k === levels ? maxVal : Math.max(prev, Math.min(maxVal, roundBound(raw)));
+      thresholds.push(val);
+      prev = val;
+    }
+  }
+
+  const assign = (t) => {
+    const v = Number(t);
+    if (!Number.isFinite(v) || v <= 0) return 0;
+    if (v >= maxVal) return levels;
+    for (let k = 0; k < levels - 1; k++) {
+      if (v <= thresholds[k]) return k + 1;
+    }
+    return levels;
+  };
+
+  return {
+    levels,
+    min: minVal,
+    max: maxVal,
+    gamma: Number(gamma.toFixed(3)),
+    thresholds,
+    assign,
+  };
+}
+
 function fileStamp(path) {
   try {
     const s = statSync(path);
@@ -256,14 +375,19 @@ function aggregateBucket(records, nowMs) {
     if (rec.isSubagent) subagentCount++;
     else mainCount++;
 
+    const posNum = (v) => {
+      const n = Number(v);
+      return Number.isFinite(n) && n > 0 ? n : 0;
+    };
     for (const [dayKey, d] of dayEntries) {
-      const inTok = d.in || 0;
-      const cacheTok = d.cache || 0;
-      const outTok = d.out || 0;
-      const thinkTok = d.think || 0;
-      const totTok = d.total ?? (inTok + cacheTok + outTok);
-      const usd = d.costUsd || 0;
-      const reqs = d.reqs || 0;
+      const inTok = posNum(d.in);
+      const cacheTok = posNum(d.cache);
+      const outTok = posNum(d.out);
+      const thinkTok = posNum(d.think);
+      const rawTot = d.total;
+      const totTok = rawTot === undefined || rawTot === null ? (inTok + cacheTok + outTok) : posNum(rawTot);
+      const usd = posNum(d.costUsd);
+      const reqs = posNum(d.reqs);
 
       inputTokens += inTok;
       cacheTokens += cacheTok;
@@ -377,25 +501,9 @@ function aggregateBucket(records, nowMs) {
     });
   }
 
-  if (positiveTotals.length > 0) {
-    positiveTotals.sort((a, b) => a - b);
-    const maxVal = positiveTotals[positiveTotals.length - 1];
-    const p95 = positiveTotals[Math.min(positiveTotals.length - 1, Math.floor((positiveTotals.length - 1) * 0.95))];
-    const refMax = Math.max(1, positiveTotals.length >= 10
-      ? Math.min(maxVal, Math.max(p95 * 1.35, maxVal * 0.55))
-      : maxVal);
-    for (const cell of windowCells) {
-      if (cell.f || cell.t <= 0) {
-        cell.l = 0;
-      } else {
-        const score = Math.sqrt(Math.min(1, cell.t / refMax));
-        if (score <= 0.28) cell.l = 1;
-        else if (score <= 0.46) cell.l = 2;
-        else if (score <= 0.66) cell.l = 3;
-        else if (score <= 0.85) cell.l = 4;
-        else cell.l = 5;
-      }
-    }
+  const scale = computeDynamicHeatmapScale(positiveTotals);
+  for (const cell of windowCells) {
+    cell.l = (cell.f || cell.t <= 0) ? 0 : scale.assign(cell.t);
   }
 
   // Last 14 calendar days
@@ -477,6 +585,13 @@ function aggregateBucket(records, nowMs) {
       startDate: dayKeyFromDate(startSunday),
       endDate: dayKeyFromDate(endSaturday),
       days: windowCells,
+      scale: {
+        levels: scale.levels,
+        min: scale.min,
+        max: scale.max,
+        gamma: scale.gamma,
+        thresholds: scale.thresholds,
+      },
     },
     last14Days,
     monthly,

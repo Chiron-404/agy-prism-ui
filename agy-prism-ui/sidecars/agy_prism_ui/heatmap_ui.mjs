@@ -111,6 +111,109 @@ export function createHeatmapRenderer() {
     return '$' + v.toFixed(2);
   }
 
+  function parseHexColor(hex) {
+    const raw = String(hex || '').trim();
+    const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(raw);
+    if (!m) return [0, 0, 0];
+    const h = m[1].length === 3 ? m[1].split('').map(c => c + c).join('') : m[1];
+    return [
+      parseInt(h.slice(0, 2), 16) / 255,
+      parseInt(h.slice(2, 4), 16) / 255,
+      parseInt(h.slice(4, 6), 16) / 255,
+    ];
+  }
+
+  function srgbToLinear(c) {
+    return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  }
+
+  function linearToSrgb(c) {
+    const cl = Math.max(0, Math.min(1, c));
+    return cl <= 0.0031308 ? cl * 12.92 : 1.055 * Math.pow(cl, 1 / 2.4) - 0.055;
+  }
+
+  function rgbToHex(r, g, b) {
+    const ch = (v) => Math.max(0, Math.min(255, Math.round(v * 255))).toString(16).padStart(2, '0');
+    return `#${ch(r)}${ch(g)}${ch(b)}`;
+  }
+
+  function buildDynamicPalette(basePalette, levelCount) {
+    const base = Array.isArray(basePalette) && basePalette.length >= 2 ? basePalette : THEMES[DEFAULT_THEME].light;
+    const stops = base.slice(1);
+    const n = Math.max(1, Math.min(12, Math.round(Number(levelCount) || stops.length)));
+    if (n === stops.length) return base.slice();
+    if (n === 1) return [base[0], stops[stops.length - 1]];
+    const linStops = stops.map(hex => parseHexColor(hex).map(srgbToLinear));
+    const sampled = [];
+    for (let i = 0; i < n; i++) {
+      if (i === 0) {
+        sampled.push(stops[0]);
+        continue;
+      }
+      if (i === n - 1) {
+        sampled.push(stops[stops.length - 1]);
+        continue;
+      }
+      const pos = (i / (n - 1)) * (stops.length - 1);
+      const idx = Math.floor(pos);
+      const frac = pos - idx;
+      const a = linStops[idx];
+      const b = linStops[Math.min(linStops.length - 1, idx + 1)];
+      const r = linearToSrgb(a[0] + (b[0] - a[0]) * frac);
+      const g = linearToSrgb(a[1] + (b[1] - a[1]) * frac);
+      const bl = linearToSrgb(a[2] + (b[2] - a[2]) * frac);
+      sampled.push(rgbToHex(r, g, bl));
+    }
+    return [base[0], ...sampled];
+  }
+
+  function getLevelColor(palette, level) {
+    const idx = Math.max(0, Math.min(palette.length - 1, Number(level) || 0));
+    return palette[idx] || palette[0];
+  }
+
+  function getScaleSignature(scale) {
+    if (!scale) return '';
+    const thr = Array.isArray(scale.thresholds) ? scale.thresholds.join(',') : '';
+    return `${scale.levels || 0}:${scale.min || 0}:${scale.max || 0}:${thr}`;
+  }
+
+  function fmtScaleBound(n) {
+    const v = Number(n) || 0;
+    if (v >= 1e3) return fmtTok(v);
+    if (Number.isInteger(v)) return String(v);
+    return String(Number(v.toPrecision(3)));
+  }
+
+  function buildLegendHtml(palette, scale) {
+    const thresholds = Array.isArray(scale?.thresholds) ? scale.thresholds : null;
+    const hasBounds = Boolean(thresholds && thresholds.length >= palette.length - 1 && Number(scale?.max) > 0);
+    const boxes = palette.map((c, idx) => {
+      let tip;
+      if (idx === 0) {
+        tip = '0（无活动）';
+      } else if (hasBounds) {
+        if (idx === 1) {
+          tip = `≤ ${fmtScaleBound(thresholds[0])}`;
+        } else {
+          const prev = Number(thresholds[idx - 2]);
+          const cur = Number(thresholds[idx - 1]);
+          if (idx === palette.length - 1 && cur <= prev) {
+            tip = `= ${fmtScaleBound(scale.max)}`;
+          } else if (cur <= prev) {
+            tip = `无（${fmtScaleBound(cur)}）`;
+          } else {
+            tip = `${fmtScaleBound(prev)} – ${fmtScaleBound(cur)}`;
+          }
+        }
+      } else {
+        tip = `Lv ${idx}`;
+      }
+      return `<i class="hm-legend-box" style="background:${c}" title="${esc(tip)}"></i>`;
+    }).join('');
+    return `<span class="hm-legend">少 ${boxes} 多</span>`;
+  }
+
   function loadSavedTheme() {
     try {
       const saved = globalThis.localStorage?.getItem('agy-prism-ui-heatmap-theme')
@@ -375,7 +478,7 @@ export function createHeatmapRenderer() {
     const o = Math.max(0, Number(day.o) || 0);
     const sum = Math.max(1, i + c + o);
     const hitPct = i + c > 0 ? ((c / (i + c)) * 100).toFixed(1) : '0.0';
-    const dotColor = palette[day.l || 0] || palette[0];
+    const dotColor = palette[Math.max(0, Math.min(palette.length - 1, day.l || 0))] || palette[0];
     const wk = getWeekdayZh(day.d);
     const convCount = Math.max(0, Number(day.n) || 0);
     const reqs = Math.max(0, Number(day.r ?? day.reqs) || 0);
@@ -433,7 +536,7 @@ export function createHeatmapRenderer() {
     const showTipForCell = (cell, day) => {
       if (!tip || !pop.hidden) return;
       raiseHostZ(20);
-      const dotColor = palette[day.l || 0] || palette[0];
+      const dotColor = palette[Math.max(0, Math.min(palette.length - 1, day.l || 0))] || palette[0];
       const convCount = Math.max(0, Number(day.n) || 0);
       tip.innerHTML = `<span class="hm-ht-dot" style="background:${dotColor}"></span>`
         + `<span>${esc(day.d)}</span>`
@@ -566,10 +669,10 @@ export function createHeatmapRenderer() {
     return bucket?.activity?.peakDay || days.find(d => !d.f) || null;
   }
 
-  function buildHeatmapSvg(weeks52, theme, dark, compact = false) {
+  function buildHeatmapSvg(weeks52, theme, dark, compact = false, paletteOverride = null) {
     const days = weeks52?.days || [];
     if (!days.length) return '';
-    const palette = dark ? theme.dark : theme.light;
+    const palette = paletteOverride || buildDynamicPalette(dark ? theme.dark : theme.light, weeks52?.scale?.levels);
     const cell = compact ? 10 : 12;
     const gap = compact ? 2.6 : 3.2;
     const step = cell + gap;
@@ -607,8 +710,7 @@ export function createHeatmapRenderer() {
       const row = idx % 7;
       const x = (leftPad + col * step).toFixed(1);
       const y = (topPad + row * step).toFixed(1);
-      const lvl = Math.max(0, Math.min(palette.length - 1, d.l || 0));
-      const fill = d.f ? 'transparent' : (palette[lvl] || palette[0]);
+      const fill = d.f ? 'transparent' : getLevelColor(palette, d.l);
       const op = d.f ? '0.18' : '1';
       const stroke = d.f ? (dark ? '#334155' : '#e2e8f0') : (dark ? 'rgba(255,255,255,0.05)' : 'rgba(15,23,42,0.05)');
       rects.push(
@@ -619,10 +721,10 @@ export function createHeatmapRenderer() {
     return `<svg viewBox="0 0 ${width.toFixed(1)} ${height.toFixed(1)}" class="hm-svg" role="img" aria-label="52 周活跃热力图">${monthLabels.join('')}${rowLabels}${rects.join('')}</svg>`;
   }
 
-  function buildHomeGridSvg(cells, theme, dark) {
+  function buildHomeGridSvg(cells, theme, dark, scale = null, paletteOverride = null) {
     const list = Array.isArray(cells) ? cells : [];
     if (!list.length) return '';
-    const palette = dark ? theme.dark : theme.light;
+    const palette = paletteOverride || buildDynamicPalette(dark ? theme.dark : theme.light, scale?.levels);
     const cols = 14;
     const rows = Math.max(1, Math.ceil(list.length / cols));
     const cell = 18;
@@ -637,8 +739,7 @@ export function createHeatmapRenderer() {
       const row = Math.floor(idx / cols);
       const x = (1 + col * step).toFixed(1);
       const y = (1 + row * step).toFixed(1);
-      const lvl = Math.max(0, Math.min(palette.length - 1, d?.l || 0));
-      const fill = palette[lvl] || palette[0];
+      const fill = getLevelColor(palette, d?.l);
       const stroke = dark ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.06)';
       rects.push(
         `<rect class="hm-cell" data-home-idx="${idx}" x="${x}" y="${y}" width="${cell}" height="${cell}" rx="4" fill="${fill}" stroke="${stroke}" stroke-width="0.6" />`,
@@ -742,10 +843,10 @@ export function createHeatmapRenderer() {
 
   function buildFullHtml(data, { source = 'all', themeName = loadSavedTheme(), dark = detectDarkMode(), showClose = true, prefs = null, optOpen = false, hasOpticalControl = false } = {}) {
     const theme = THEMES[themeName] || THEMES[DEFAULT_THEME];
-    const palette = dark ? theme.dark : theme.light;
-    const accent = dark ? theme.accentDark : theme.accent;
     const activeSource = ['all', 'app', 'ide', 'cli'].includes(source) ? source : 'all';
     const bucket = data?.sources?.[activeSource] || data?.sources?.all;
+    const palette = buildDynamicPalette(dark ? theme.dark : theme.light, bucket?.weeks52?.scale?.levels);
+    const accent = dark ? theme.accentDark : theme.accent;
     const totals = bucket?.totals || { totalTokens: 0, inputTokens: 0, cacheTokens: 0, outputTokens: 0, cacheHitRate: 0, conversationCount: 0, mainCount: 0, subagentCount: 0 };
     const activity = bucket?.activity || { activeDays: 0, currentStreak: 0, longestStreak: 0, peakDay: null };
     const defaultDay = pickDefaultDay(bucket);
@@ -1210,8 +1311,8 @@ ${getDayPopCss(accent, dark)}
       + `  <div class="hm-card"><div class="hm-kpi-label">单日最高</div><div class="hm-kpi-val">${esc(activity.peakDay ? fmtTok(activity.peakDay.t) : '0')}</div><div class="hm-kpi-sub">全局缓存命中 ${(Number(totals.cacheHitRate) || 0).toFixed(1)}%${activity.peakDay ? ` · ${activity.peakDay.d.slice(5)}` : ''}</div></div>`
       + `</div>`
       + `<div class="hm-card" data-hm-full-card style="position:relative">`
-      + `  <div class="hm-card-head"><span class="hm-card-title">52 周活跃热力图</span><span class="hm-legend">少 ${palette.map(c => `<i class="hm-legend-box" style="background:${c}"></i>`).join('')} 多</span></div>`
-      + (bucket ? buildHeatmapSvg(bucket.weeks52, theme, dark, false) : '<div class="hm-empty">正在读取本地会话数据库…</div>')
+      + `  <div class="hm-card-head"><span class="hm-card-title">52 周活跃热力图</span>${buildLegendHtml(palette, bucket?.weeks52?.scale)}</div>`
+      + (bucket ? buildHeatmapSvg(bucket.weeks52, theme, dark, false, palette) : '<div class="hm-empty">正在读取本地会话数据库…</div>')
       + `  <div class="hm-hover-tip" data-hm-hover-tip hidden></div>`
       + `  <div class="hm-day-pop" data-hm-day-pop hidden></div>`
       + `</div>`
@@ -1240,7 +1341,8 @@ ${getDayPopCss(accent, dark)}
 
   function buildHomeBodyHtml(bucket, { themeName, dark, collapsed }) {
     const theme = THEMES[themeName] || THEMES[DEFAULT_THEME];
-    const palette = dark ? theme.dark : theme.light;
+    const scale = bucket?.weeks52?.scale;
+    const palette = buildDynamicPalette(dark ? theme.dark : theme.light, scale?.levels);
     const totals = bucket?.totals || { totalTokens: 0, cacheHitRate: 0 };
     const activity = bucket?.activity || { currentStreak: 0, activeDays: 0, peakDay: null };
     const cells = getHomeCells(bucket, collapsed);
@@ -1248,11 +1350,11 @@ ${getDayPopCss(accent, dark)}
 
     return collapsed
       ? `<div class="hm-home-collapsed">`
-        + buildHomeGridSvg(cells, theme, dark)
-        + `  <div class="hm-home-foot"><span class="hm-home-detail" data-hm-home-detail>${esc(formatCompactDay(defaultDay))}</span><span class="hm-legend">少 ${palette.map(c => `<i class="hm-legend-box" style="background:${c}"></i>`).join('')} 多</span></div>`
+        + buildHomeGridSvg(cells, theme, dark, scale, palette)
+        + `  <div class="hm-home-foot"><span class="hm-home-detail" data-hm-home-detail>${esc(formatCompactDay(defaultDay))}</span>${buildLegendHtml(palette, scale)}</div>`
         + `</div>`
       : `<div class="hm-home-expanded">`
-        + `  <div>${buildHomeGridSvg(cells, theme, dark)}</div>`
+        + `  <div>${buildHomeGridSvg(cells, theme, dark, scale, palette)}</div>`
         + `  <div class="hm-home-side">`
         + `    <div class="hm-home-kpis">`
         + `      <div class="hm-home-kpi"><div class="hm-home-kpi-l">累计 Token</div><div class="hm-home-kpi-v">${esc(fmtTok(totals.totalTokens))}</div></div>`
@@ -1260,7 +1362,7 @@ ${getDayPopCss(accent, dark)}
         + `      <div class="hm-home-kpi"><div class="hm-home-kpi-l">单日峰值</div><div class="hm-home-kpi-v">${esc(activity.peakDay ? fmtTok(activity.peakDay.t) : '0')}</div></div>`
         + `      <div class="hm-home-kpi"><div class="hm-home-kpi-l">缓存命中</div><div class="hm-home-kpi-v">${(Number(totals.cacheHitRate) || 0).toFixed(1)}%</div></div>`
         + `    </div>`
-        + `    <div class="hm-home-foot"><span class="hm-home-detail" data-hm-home-detail>${esc(formatCompactDay(defaultDay))}</span><span class="hm-legend">少 ${palette.map(c => `<i class="hm-legend-box" style="background:${c}"></i>`).join('')} 多</span></div>`
+        + `    <div class="hm-home-foot"><span class="hm-home-detail" data-hm-home-detail>${esc(formatCompactDay(defaultDay))}</span>${buildLegendHtml(palette, scale)}</div>`
         + `  </div>`
         + `</div>`;
   }
@@ -1521,7 +1623,8 @@ ${getDayPopCss(accent, dark)}
     const prefs = callbacks.prefs || null;
     const hasOpticalControl = typeof callbacks.onUpdatePrefs === 'function';
     const prefSig = prefs ? [prefs.opticalLightTheme, prefs.opticalDarkTheme, prefs.opticalPrismRim, prefs.opticalGlass, prefs.opticalMotion, prefs.opticalCodeTools].join(':') : '';
-    const renderKey = JSON.stringify([data?.generatedAt || 0, state.source, state.theme, dark, callbacks.showClose !== false, hasOpticalControl, prefSig]);
+    const scaleSig = getScaleSignature(bucket?.weeks52?.scale);
+    const renderKey = JSON.stringify([data?.generatedAt || 0, state.source, state.theme, dark, callbacks.showClose !== false, hasOpticalControl, prefSig, scaleSig]);
     if (root._hmRenderKey === renderKey) return;
     root._hmRenderKey = renderKey;
 
@@ -1537,7 +1640,7 @@ ${getDayPopCss(accent, dark)}
 
     const fullCard = root.querySelector('[data-hm-full-card]');
     const themeObj = THEMES[state.theme] || THEMES[DEFAULT_THEME];
-    const palette = dark ? themeObj.dark : themeObj.light;
+    const palette = buildDynamicPalette(dark ? themeObj.dark : themeObj.light, bucket?.weeks52?.scale?.levels);
     bindDayPopover(root, fullCard, days, 'data-day-idx', palette, null);
 
     const meta14 = root.querySelector('[data-hm-meta14]');
@@ -1637,13 +1740,22 @@ ${getDayPopCss(accent, dark)}
     const themeName = loadSavedTheme();
     const dark = detectDarkMode();
     let curCollapsed = loadHomeCollapsed();
-    const renderKey = JSON.stringify([data?.generatedAt || 0, themeName, dark, curCollapsed]);
+    const getHomeKey = (d, collapsedFlag) => JSON.stringify([
+      d?.generatedAt || 0,
+      themeName,
+      dark,
+      collapsedFlag,
+      getScaleSignature(d?.sources?.all?.weeks52?.scale),
+    ]);
+    const renderKey = getHomeKey(data, curCollapsed);
     if (root._hmHomeKey === renderKey) return;
     const shellKey = JSON.stringify([themeName, dark]);
-    if (root._hmHomeShellKey === shellKey && root._hmUpdateHomeData && root.querySelector('.hm-home-card')?.isConnected !== false) {
-      root._hmHomeKey = renderKey;
-      root._hmUpdateHomeData(data, curCollapsed, callbacks);
-      return;
+    const liveCard = root.querySelector('.hm-home-card');
+    if (root._hmHomeShellKey === shellKey && root._hmUpdateHomeData && liveCard && liveCard.isConnected !== false) {
+      if (root._hmUpdateHomeData(data, curCollapsed, callbacks)) {
+        root._hmHomeKey = renderKey;
+        return;
+      }
     }
     root._hmHomeKey = renderKey;
     root._hmHomeShellKey = shellKey;
@@ -1654,14 +1766,15 @@ ${getDayPopCss(accent, dark)}
     let curCallbacks = callbacks;
     const card = root.querySelector('.hm-home-card');
     const themeObj = THEMES[themeName] || THEMES[DEFAULT_THEME];
-    const palette = dark ? themeObj.dark : themeObj.light;
-    const bindHomeCells = (targetCells) => {
+    const basePalette = dark ? themeObj.dark : themeObj.light;
+    const bindHomeCells = (targetCells, targetBucket) => {
       const detailEl = root.querySelector('[data-hm-home-detail]');
-      bindDayPopover(root, card, targetCells, 'data-home-idx', palette, (day) => {
+      const dynamicPalette = buildDynamicPalette(basePalette, targetBucket?.weeks52?.scale?.levels);
+      bindDayPopover(root, card, targetCells, 'data-home-idx', dynamicPalette, (day) => {
         if (detailEl) detailEl.textContent = formatCompactDay(day);
       });
     };
-    bindHomeCells(getHomeCells(curData?.sources?.all, curCollapsed));
+    bindHomeCells(getHomeCells(curData?.sources?.all, curCollapsed), curData?.sources?.all);
 
     root.querySelector('[data-hm-home="open"]')?.addEventListener('click', () => {
       curCallbacks?.onOpenFull?.();
@@ -1757,17 +1870,18 @@ ${getDayPopCss(accent, dark)}
         toggleBtn.setAttribute('aria-expanded', String(!nextCollapsed));
       }
       bodyEl.innerHTML = buildHomeBodyHtml(nextBucket, { themeName, dark, collapsed: nextCollapsed });
-      bindHomeCells(getHomeCells(nextBucket, nextCollapsed));
+      bindHomeCells(getHomeCells(nextBucket, nextCollapsed), nextBucket);
       return true;
     };
     root._hmUpdateHomeData = (nextData, nextCollapsed, nextCallbacks) => {
       curData = nextData;
       curCollapsed = nextCollapsed;
       if (nextCallbacks) curCallbacks = nextCallbacks;
-      updateBodyUi(curCollapsed);
-      if (!bodyAnimCleanup) {
+      const updated = updateBodyUi(curCollapsed);
+      if (updated && !bodyAnimCleanup) {
         syncPointerAll();
       }
+      return updated;
     };
     root.querySelector('[data-hm-home="toggle"]')?.addEventListener('click', (ev) => {
       if (typeof ev?.clientX === 'number' && typeof ev?.clientY === 'number' && (ev.clientX !== 0 || ev.clientY !== 0)) {
@@ -1782,7 +1896,7 @@ ${getDayPopCss(accent, dark)}
 
       curCollapsed = !curCollapsed;
       saveHomeCollapsed(curCollapsed);
-      root._hmHomeKey = JSON.stringify([curData?.generatedAt || 0, themeName, dark, curCollapsed]);
+      root._hmHomeKey = getHomeKey(curData, curCollapsed);
 
       if (!updateBodyUi(curCollapsed)) {
         root._hmHomeKey = '';
@@ -1868,11 +1982,12 @@ ${getDayPopCss(accent, dark)}
   }
 
   return {
-    version: 24,
+    version: 25,
     THEMES,
     DEFAULT_THEME,
     fmtTok,
     fmtUsd,
+    buildDynamicPalette,
     buildFullHtml,
     buildHomeHtml,
     renderFullHeatmap,
@@ -1881,4 +1996,4 @@ ${getDayPopCss(accent, dark)}
   };
 }
 
-export const getHeatmapRendererScript = () => `if (globalThis.__agyPrismHeatmapUI?.version !== 24) globalThis.__agyPrismHeatmapUI = (${createHeatmapRenderer.toString()})();`;
+export const getHeatmapRendererScript = () => `if (globalThis.__agyPrismHeatmapUI?.version !== 25) globalThis.__agyPrismHeatmapUI = (${createHeatmapRenderer.toString()})();`;

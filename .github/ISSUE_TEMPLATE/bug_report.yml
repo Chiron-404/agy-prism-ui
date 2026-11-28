@@ -24,8 +24,8 @@ body:
     id: env
     attributes:
       label: 系统与版本 / Environment
-      description: 例如：Windows 11 / Antigravity x.y.z / Agy Prism UI v2.0.1
-      placeholder: Windows 11, Antigravity ..., Agy Prism UI v2.0.1
+      description: 例如：Windows 11 / Antigravity x.y.z / Agy Prism UI v2.0.2
+      placeholder: Windows 11, Antigravity ..., Agy Prism UI v2.0.2
     validations:
       required: true
   - type: dropdown

@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   buildHeatmapData,
+  computeDynamicHeatmapScale,
   createHeatmapAggregator,
   estimateRequestCostUsd,
   readConversationHeatmapRecord,
@@ -55,7 +56,7 @@ function buildGenRow({ stepIndices = [], modelId = '', modelName = '', uncachedI
   ]);
 }
 
-test('buildHeatmapData computes totals, streaks, 52-week quantiles, 14-day bars, and 12-month cumulative series', () => {
+test('buildHeatmapData computes totals, streaks, 52-week dynamic scaling, 14-day bars, and 12-month cumulative series', () => {
   const nowMs = new Date(2026, 10, 26, 12, 0, 0).getTime();
   const records = [
     {
@@ -99,10 +100,12 @@ test('buildHeatmapData computes totals, streaks, 52-week quantiles, 14-day bars,
   assert.equal(all.monthly.at(-1).m, '2026-11');
   assert.equal(all.monthly.at(-1).cum, 71_770_000);
 
+  assert.equal(all.weeks52.scale.levels, 6);
+  assert.equal(all.weeks52.scale.thresholds.length, 6);
   const nov26Cell = all.weeks52.days.find(d => d.d === '2026-11-26');
-  assert.equal(nov26Cell.l, 5);
+  assert.equal(nov26Cell.l, all.weeks52.scale.levels);
   const nov25Cell = all.weeks52.days.find(d => d.d === '2026-11-25');
-  assert.ok(nov25Cell.l >= 1 && nov25Cell.l <= 4);
+  assert.ok(nov25Cell.l >= 1 && nov25Cell.l < all.weeks52.scale.levels);
 
   assert.equal(data.counts.all, 2);
   assert.equal(data.counts.app, 1);
@@ -257,7 +260,8 @@ test('estimateRequestCostUsd prioritizes Hydrogen family over generic Orchestrat
   assert.ok(Math.abs(orchWorkerCost - 3.75) < 1e-6);
 
   const ui = createHeatmapRenderer();
-  assert.equal(ui.version, 24);
+  assert.equal(ui.version, 25);
+  assert.equal(typeof ui.buildDynamicPalette, 'function');
   assert.equal(typeof ui.cleanupHeatmapRoot, 'function');
   const src = createHeatmapRenderer.toString();
   assert.ok(src.includes('day.r ?? day.reqs'));
@@ -450,5 +454,236 @@ test('renderHomeHeatmapCard toggles in place, survives background refresh and st
     globalThis.requestAnimationFrame = prevRaf;
     globalThis.cancelAnimationFrame = prevCaf;
     globalThis.matchMedia = prevMm;
+  }
+});
+
+test('computeDynamicHeatmapScale separates wide ranges, prevents 1% exaggeration, and handles edge cases', () => {
+  // 1. Wide range mimicking 0.84M .. 169.03M (201x span)
+  const wideTotals = [
+    169_030_000, 97_060_000, 90_300_000, 89_310_000, 58_210_000, 56_530_000,
+    40_600_000, 31_190_000, 29_540_000, 27_780_000, 18_070_000, 11_730_000,
+    8_690_000, 8_290_000, 7_220_000, 5_000_000, 3_170_000, 840_000,
+  ];
+  const wide = computeDynamicHeatmapScale(wideTotals);
+  assert.equal(wide.levels, 8);
+  assert.equal(wide.thresholds.length, 8);
+  assert.equal(wide.assign(169_030_000), 8);
+  assert.ok(wide.assign(97_060_000) <= 6, `expected 97.06M <= 6, got ${wide.assign(97_060_000)}`);
+  assert.equal(wide.assign(840_000), 1);
+  assert.equal(wide.assign(0), 0);
+
+  // Monotonicity & threshold consistency across sorted wide values
+  const ascWide = [...wideTotals].sort((a, b) => a - b);
+  for (let i = 0; i < ascWide.length; i++) {
+    const lvl = wide.assign(ascWide[i]);
+    assert.ok(lvl >= 1 && lvl <= wide.levels);
+    if (i > 0) assert.ok(lvl >= wide.assign(ascWide[i - 1]));
+    if (lvl < wide.levels) assert.ok(ascWide[i] <= wide.thresholds[lvl - 1]);
+    if (lvl > 1) assert.ok(ascWide[i] > wide.thresholds[lvl - 2] || ascWide[i] >= wide.max);
+  }
+
+  // 2. Near-equal values [99M, 100M] must not exaggerate a 1% diff into min vs max tiers
+  const nearEqual = computeDynamicHeatmapScale([99_000_000, 100_000_000]);
+  assert.equal(nearEqual.levels, 4);
+  assert.equal(nearEqual.assign(99_000_000), 4);
+  assert.equal(nearEqual.assign(100_000_000), 4);
+
+  // 3. Narrow [80M..100M], single day, empty, and tiny integers [1, 2]
+  const narrow = computeDynamicHeatmapScale([80_000_000, 85_000_000, 90_000_000, 95_000_000, 100_000_000]);
+  assert.equal(narrow.levels, 4);
+  assert.ok(narrow.assign(100_000_000) >= narrow.assign(80_000_000));
+
+  const single = computeDynamicHeatmapScale([5_050_000]);
+  assert.equal(single.levels, 4);
+  assert.equal(single.assign(5_050_000), 4);
+  assert.equal(single.assign(0), 0);
+
+  const empty = computeDynamicHeatmapScale([]);
+  assert.equal(empty.levels, 5);
+  assert.equal(empty.assign(1000), 0);
+
+  const tiny = computeDynamicHeatmapScale([1, 2]);
+  assert.equal(tiny.levels, 4);
+  assert.equal(tiny.assign(2), 4);
+  assert.equal(tiny.assign(1), 1);
+
+  const tinyFrac = computeDynamicHeatmapScale([0.01, 0.02]);
+  assert.equal(tinyFrac.levels, 4);
+  assert.equal(tinyFrac.assign(0.02), 4);
+  assert.equal(tinyFrac.assign(0.01), 1);
+  assert.equal(tinyFrac.assign(Infinity), 0);
+  assert.equal(tinyFrac.assign(NaN), 0);
+
+  // Extreme isolated 1B peak must not flatten ordinary days [100k, 500k, 1M, 4M] to all level 1
+  const extremePeak = computeDynamicHeatmapScale([100_000, 500_000, 1_000_000, 4_000_000, 1_000_000_000]);
+  assert.equal(extremePeak.levels, 8);
+  assert.equal(extremePeak.assign(1_000_000_000), 8);
+  assert.ok(extremePeak.assign(4_000_000) >= 5 && extremePeak.assign(4_000_000) <= 7);
+  assert.ok(extremePeak.assign(1_000_000) > extremePeak.assign(100_000));
+
+  // Verify buildHeatmapData embeds scale matching cell levels
+  const nowMs = new Date(2026, 10, 28, 12, 0, 0).getTime();
+  const days = {};
+  wideTotals.forEach((tok, idx) => {
+    const d = new Date(2026, 10, 28 - idx);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    days[key] = { in: tok * 0.1, cache: tok * 0.85, out: tok * 0.05, think: 0, total: tok, costUsd: 1, reqs: 5 };
+  });
+  const hm = buildHeatmapData([{ id: 'wide', source: 'app', isSubagent: false, days }], nowMs);
+  const w52 = hm.sources.all.weeks52;
+  assert.equal(w52.scale.levels, 8);
+  const peakCell = w52.days.find(d => d.t === 169_030_000);
+  const midHighCell = w52.days.find(d => d.t === 97_060_000);
+  assert.equal(peakCell.l, 8);
+  assert.ok(midHighCell.l <= 6);
+});
+
+test('buildDynamicPalette and heatmap UI render dynamic legend swatches and update in-place across scale level changes', () => {
+  const ui = createHeatmapRenderer();
+  for (const theme of Object.values(ui.THEMES)) {
+    assert.deepEqual(ui.buildDynamicPalette(theme.light, 5), theme.light);
+    assert.deepEqual(ui.buildDynamicPalette(theme.dark, 5), theme.dark);
+    for (const n of [4, 6, 7, 8]) {
+      for (const base of [theme.light, theme.dark]) {
+        const pal = ui.buildDynamicPalette(base, n);
+        assert.equal(pal.length, n + 1);
+        assert.equal(pal[0], base[0]);
+        assert.equal(pal[1], base[1]);
+        assert.equal(pal[n], base[5]);
+        for (const hex of pal) {
+          assert.match(hex, /^#[0-9a-f]{6}$/i);
+        }
+      }
+    }
+  }
+
+  const nowMs = new Date(2026, 10, 28, 12, 0, 0).getTime();
+  const wideTotals = [
+    169_030_000, 97_060_000, 90_300_000, 89_310_000, 58_210_000, 56_530_000,
+    40_600_000, 31_190_000, 29_540_000, 27_780_000, 18_070_000, 11_730_000,
+    8_690_000, 8_290_000, 7_220_000, 5_000_000, 3_170_000, 840_000,
+  ];
+  const days = {};
+  wideTotals.forEach((tok, idx) => {
+    const d = new Date(2026, 10, 28 - idx);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    days[key] = { in: tok * 0.1, cache: tok * 0.85, out: tok * 0.05, think: 0, total: tok, costUsd: 1, reqs: 5 };
+  });
+  const wideData = buildHeatmapData([{ id: 'w', source: 'app', isSubagent: false, days }], nowMs);
+
+  const full = ui.buildFullHtml(wideData, { themeName: 'blue', dark: false });
+  assert.equal((full.match(/class="hm-legend-box"/g) || []).length, 9);
+  assert.ok(full.includes('≤ '));
+  assert.ok(full.includes(' – '));
+
+  const home = ui.buildHomeHtml(wideData, { themeName: 'blue', dark: false, collapsed: false });
+  assert.equal((home.match(/class="hm-legend-box"/g) || []).length, 9);
+
+  // Verify renderHomeHeatmapCard updates in-place when scale.levels changes from 5 -> 8
+  const prevDoc = globalThis.document;
+  const prevLs = globalThis.localStorage;
+  const makeNode = (tag) => {
+    const attrs = new Map();
+    const styles = new Map();
+    const listeners = new Map();
+    return {
+      tagName: tag,
+      hidden: false,
+      dataset: {},
+      textContent: '',
+      innerHTML: '',
+      isConnected: true,
+      style: {
+        setProperty(k, v) { styles.set(k, String(v)); },
+        getPropertyValue(k) { return styles.get(k) || ''; },
+        removeProperty(k) { styles.delete(k); },
+      },
+      setAttribute(k, v) { attrs.set(k, String(v)); },
+      getAttribute(k) { return attrs.has(k) ? attrs.get(k) : null; },
+      hasAttribute(k) { return attrs.has(k); },
+      removeAttribute(k) { attrs.delete(k); },
+      addEventListener(t, fn) {
+        if (!listeners.has(t)) listeners.set(t, new Set());
+        listeners.get(t).add(fn);
+      },
+      removeEventListener(t, fn) { listeners.get(t)?.delete(fn); },
+      getBoundingClientRect() { return { left: 0, top: 0, right: 400, bottom: 120, width: 400, height: 120 }; },
+      querySelectorAll() { return []; },
+    };
+  };
+  const docListeners = new Map();
+  globalThis.document = {
+    documentElement: {},
+    addEventListener(t, fn) {
+      if (!docListeners.has(t)) docListeners.set(t, new Set());
+      docListeners.get(t).add(fn);
+    },
+    removeEventListener(t, fn) { docListeners.get(t)?.delete(fn); },
+  };
+  globalThis.localStorage = { getItem: () => null, setItem() {} };
+
+  try {
+    let html = '';
+    const card = makeNode('card');
+    const body = makeNode('body');
+    const stats = makeNode('stats');
+    const detail = makeNode('detail');
+    const toggle = makeNode('toggle');
+    const open = makeNode('open');
+    const pop = makeNode('pop');
+    const tip = makeNode('tip');
+    const root = {
+      host: { isConnected: true, dataset: {}, style: {} },
+      get innerHTML() { return html; },
+      set innerHTML(v) { html = String(v); },
+      addEventListener() {},
+      removeEventListener() {},
+      querySelector(sel) {
+        if (sel === '.hm-home-card') return card;
+        if (sel === '.hm-home-body') return body;
+        if (sel === '.hm-home-stats') return stats;
+        if (sel === '[data-hm-home-detail]') return detail;
+        if (sel === '[data-hm-home="toggle"]') return toggle;
+        if (sel === '[data-hm-home="open"]') return open;
+        if (sel === '[data-hm-day-pop]') return pop;
+        if (sel === '[data-hm-hover-tip]') return tip;
+        return null;
+      },
+      querySelectorAll() { return []; },
+    };
+
+    const snap5 = {
+      generatedAt: 1,
+      sources: {
+        all: {
+          totals: { totalTokens: 5_000_000, cacheHitRate: 80 },
+          activity: { currentStreak: 1, activeDays: 2, peakDay: { d: '2026-11-28', t: 4_000_000 } },
+          weeks52: {
+            scale: { levels: 5, min: 1_000_000, max: 4_000_000, gamma: 0.75, thresholds: [1_500_000, 2_000_000, 2_600_000, 3_300_000, 4_000_000] },
+            days: [{ d: '2026-11-28', t: 4_000_000, i: 1, c: 2, o: 1, n: 1, l: 5 }],
+          },
+        },
+      },
+    };
+    ui.renderHomeHeatmapCard(root, snap5);
+    assert.equal((html.match(/class="hm-legend-box"/g) || []).length, 6);
+
+    ui.renderHomeHeatmapCard(root, wideData);
+    assert.strictEqual(root.querySelector('.hm-home-card'), card);
+    assert.equal((body.innerHTML.match(/class="hm-legend-box"/g) || []).length, 9);
+
+    // Same generatedAt AND same scale.levels, but changed thresholds & cell.l -> must still refresh in-place!
+    const wideClone = structuredClone(wideData);
+    wideClone.sources.all.weeks52.scale.thresholds = [
+      1_000_000, 5_000_000, 15_000_000, 35_000_000, 65_000_000, 100_000_000, 135_000_000, 169_030_000,
+    ];
+    ui.renderHomeHeatmapCard(root, wideClone);
+    assert.strictEqual(root.querySelector('.hm-home-card'), card);
+    assert.ok(body.innerHTML.includes('135.00M – 169.03M'));
+
+    ui.cleanupHeatmapRoot(root);
+  } finally {
+    globalThis.document = prevDoc;
+    globalThis.localStorage = prevLs;
   }
 });
