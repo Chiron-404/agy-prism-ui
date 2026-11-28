@@ -58,17 +58,18 @@ export function parseReleaseVersion(tag = '') {
   const patch = Number(m[3]);
   const preTag = m[4] ? m[4].toLowerCase() : '';
   const preNum = m[5] !== undefined ? Number(m[5]) : 0;
-  const channel = !preTag ? 'stable' : preTag.startsWith('dev') ? 'dev' : 'preview';
+  const isDevTag = preTag === 'dev' || preTag.startsWith('dev-') || /(?:^|-)dev$/.test(preTag);
+  const channel = !preTag ? 'stable' : isDevTag ? 'dev' : 'preview';
   return { raw, major, minor, patch, preTag, preNum, channel };
 }
 
 function preTagRank(preTag) {
   if (!preTag) return 100;
+  if (preTag === 'dev' || preTag.startsWith('dev-') || /(?:^|-)dev$/.test(preTag)) return 10;
   if (preTag.startsWith('rc')) return 40;
   if (preTag.startsWith('beta')) return 30;
   if (preTag.startsWith('pre')) return 25;
   if (preTag.startsWith('alpha')) return 20;
-  if (preTag.startsWith('dev')) return 10;
   return 15;
 }
 

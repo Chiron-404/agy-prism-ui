@@ -31,6 +31,16 @@ export function createTurnPresentation(formatTokens) {
       turnElapsedTip: '從發出訊息到本輪結束的總耗時（含模型等待與工具執行）。',
       turnKnownTip: '已記錄', turnMissingTip: '缺少用量的嘗試數',
     },
+    ja: {
+      turnMetrics: '直近ターン', showTurnMetrics: 'ターン統計', turnRequests: 'リクエスト', turnWrite: '出力', turnThinking: '思考', turnElapsed: '経過',
+      turnLabel: 'ターン', turnReqsLabel: '回数', turnReqsShort: '回',
+      turnScopeTip: '最新のユーザー送信からの現在ターン累計統計。',
+      turnRequestsTip: 'このターンで送信されたモデルリクエスト数（リトライ含む）。',
+      turnWriteTip: 'このターンで生成された返信とツール呼び出しトークン合計。',
+      turnThinkingTip: 'このターンで生成された思考トークン合計。',
+      turnElapsedTip: 'メッセージ送信から完了までの総経過時間（待機・ツール実行を含む）。',
+      turnKnownTip: '記録済み', turnMissingTip: '使用量欠落試行',
+    },
   };
   function turnMetricsMarkup(className = 'generation-block') {
     const col = (key, label) => `<div class="turn-bar-item" data-turn-row="${key}"><span class="turn-bar-line" aria-hidden="true"></span><span class="turn-bar-label" data-i18n="${label}"></span>${key === 'requests' ? '<span class="turn-bar-short" data-i18n="turnReqsShort" aria-hidden="true">Re</span>' : ''}<span class="turn-bar-val" data-turn-metric="${key}">—</span></div>`;

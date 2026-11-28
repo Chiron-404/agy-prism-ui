@@ -210,8 +210,77 @@ export function createPresentation(turnFactory = createTurnPresentation) {
       updateChannelStable: '正式版', updateChannelPreview: '預覽版', updateChannelDev: '開發版',
       autoCheckUpdates: '每日 09:00 / 19:00 自動檢查更新',
     },
+    ja: {
+      cache: 'キャッシュ', turn0: '初回', read: '読込', think: '思考', write: '書込',
+      used: '使用', fiveHours: '5時間', weekly: '週間', soon: 'まもなく', active: '現在',
+      settings: '表示設定', language: '表示言語',
+      cdpTitle: 'Prism Lens 無効',
+      cdpBody: 'Antigravity のデバッグポートに接続できないため、Optical UI・Insights・Prism Lens を挿入できません。既定ではこのポートは無効です。サイドバー統計は利用可能です。',
+      cdpHow: '有効化手順', cdpScript: 'ワンステップ (Windows): 展開した Agy Prism UI フォルダで実行', cdpManual: 'または手動: Antigravity ショートカットの「リンク先」末尾に追加', cdpRestart: 'その後、Antigravity を完全に終了して再起動してください。',
+      sidebarStats: '統計', sidebarSettings: '設定', sidebarNavigation: 'Sidebar 画面',
+      settingsLanguage: '設定言語', highlightActiveModel: '使用中モデルを強調',
+      hideUnavailableQuota: '利用不可の枠を隠す',
+      showCacheWarnings: 'キャッシュ期限警告',
+      showContextWarnings: 'コンテキスト超過警告', showRequestErrors: 'リクエスト失敗レンズ',
+      highContextTip: 'コンテキスト使用率が高いため、圧縮または新規チャットを推奨します。',
+      overflowContextTip: '直前のリクエストがモデルの上限を超過しました。',
+      requestFailure: 'リクエスト失敗', retryAfter: 'サーバー指定の待機時間:',
+      error_quota_exhausted: '枠上限到達', error_rate_limited: '429 制限', error_network_error: '切断', error_auth_error: '認証エラー', error_service_unavailable: '混雑中', error_unknown: '不明なエラー',
+      detail_quota_exhausted: 'クォータ上限に達しました。別モデルへ切り替えるかリセットまでお待ちください。',
+      detail_rate_limited: 'レート制限に達しました。しばらく待ってから再試行してください。',
+      detail_network_error: '接続エラーまたはタイムアウトです。ネットワークを確認して再試行してください。',
+      detail_auth_error: '認証または権限エラーです。ログイン状態とアカウント権限を確認してください。',
+      detail_service_unavailable: 'モデルサービスが一時的に利用できません。時間をおいて再試行するかモデルを切り替えてください。',
+      detail_unknown: 'リクエストに失敗しましたが、原因を特定できませんでした。',
+      showSpeed: '生成速度', showRequestMetrics: '直近リクエスト',
+      speedAnimation: 'エフェクト',
+      saveFailed: '保存に失敗しました。再試行してください。',
+      newChat: '新規チャット', cached: 'キャッシュ',
+      cachedInput: 'キャッシュ入力', lastActivity: '最終記録経過', cacheWarning: '4分の保持しきい値に接近', cacheCold: '4分超過・キャッシュ失効の可能性',
+      context: 'コンテキスト詳細', quota: 'モデル枠',
+      contextUsed: '使用', contextLimit: '上限', contextRemaining: '残り', uncachedInput: '非キャッシュ入力', ofLimit: '上限の {pct}', resetAt: 'リセット', resetUnknown: 'リセット時刻不明',
+      contextScope: '現在リクエストの入力コンテキスト（最新出力は除く）。',
+      turn0Tip: 'このサイクルの開始入力ベースライン（システムプロンプトと引き継ぎ履歴）。',
+      readTip: '会話で追加された入力（ユーザー発言・読込ファイル・ツール結果）。',
+      writeTip: 'コンテキストに残る過去の返信とツール呼び出し（最新返信は除く）。',
+      thinkTip: 'コンテキストに残る過去の思考トークン（最新返信は除く）。',
+      output: '総出力', reply: '返信/呼出', thinking: '思考',
+      totalTime: '所要時間', streamTime: 'ストリーム',
+      speedTip: '生成速度 = 総出力 ÷ 所要時間 (TTFT + ストリーム)。',
+      outputTip: '直近リクエストの出力',
+      ttftTip: '初回トークン待機からリクエスト完了までの所要時間。',
+      totalTimeTip: 'リクエスト時間 (TTFT + ストリーム、ツール実行時間は除く)。',
+      appearanceSection: '外観', featuresSection: '機能',
+      speedPairTip: 'レンズ速度: 現ターンで完了した直近リクエスト速度。エフェクト: 実行中は点滅し、終了後15秒間は速度色を保持 (≥25 緑, 10–25 黄, <10 赤)。',
+      requestSectionTip: '直近リクエストの TTFT–所要時間と速度をパネル表示します（レンズ速度とは独立）。',
+      turnSectionTip: '最新のユーザー送信から完了までのリクエスト数・経過・書込・思考を集計します。',
+      panelLayout: 'パネル高さ', naturalLayout: '自然', matchedLayout: '揃える',
+      density: 'パネル余白', compact: 'コンパクト', standard: '標準', spacious: 'ゆったり',
+      quotaIndicator: '枠表示形式', ring: 'リング', bar: 'バー',
+      labelCase: '大文字小文字', lowercase: '小文字', titlecase: '先頭大文字',
+      contextLayout: 'コンテキスト内訳', turnLayout: 'ターン統計形式', layoutColumns: '縦バー', layoutRows: '横バー', contextMarker: 'コンテキスト印', turnMarker: 'ターン印', showContextBreakdown: 'コンテキスト内訳', markerSquare: '四角', markerDot: '丸点',
+      columnLabel: '項目名を表示', columnValue: '数値を表示', columnPercent: '割合を表示', fieldName: '項目名', fieldValue: '数値', fieldPercent: '%', fieldDragTip: 'ドラッグで並び替え、スイッチで表示・非表示を切り替え。',
+      resetFormat: 'リセット表記', compactTime: '短縮', localizedTime: '標準', localizedTimeSample: '4時間55分',
+      resetDay: '{n}日', resetHour: '{n}時間', resetMinute: '{n}分', resetMinuteOnly: '{n}分', resetJoin: '',
+      trendsSection: '推移と履歴', contextTrend: 'コンテキスト推移', speedTrend: '速度推移',
+      sessionTotal: 'セッション', sessionTime: '稼働時間', modelTime: 'モデル時間',
+      turnsUnit: 'ターン', reqsUnit: '回', avgSpeed: '平均', streamSpeed: 'ストリーム', peakSpeed: '最大', peakCtx: '最大',
+      autoCompactAt: '自動圧縮線', totalUsage: '累計使用量',
+      compactedBadge: '圧縮 {n}回', turnHistoryTab: 'ターン履歴', reqHistoryTab: 'リクエスト履歴', noHistory: '履歴データなし',
+      stepModel: '現ステップモデル', phasePlan: '計画', phaseExec: '実行', phaseDirect: '直接',
+      effortLabel: '思考', effortAuto: '自動',
+      effortAutoTip: 'Orchestrator がサーバー側でステップごとに思考深度を動的に調整します。',
+      stepThinking: 'ステップ思考', thinkShort: '思', routingSummary: 'モデル分担', stepsUnit: '歩', readyNextTurn: '待機中',
+      opticalSection: '光学テーマ', opticalLightTheme: 'ライト配色', opticalDarkTheme: 'ダーク配色',
+      optCrystal: 'Frost', optAlabaster: 'Ivory', optObsidian: 'Noir', optWarm: 'Graphite', optNative: 'ネイティブ',
+      opticalPrismRim: 'Gemini プリズム枠光', opticalGlass: 'すりガラス質感',
+      opticalMotion: 'ストリームフェード効果', opticalCodeTools: '長いコード折畳と固定ヘッダ',
+      updatesSection: 'アップデート', updateChannel: 'リリースチャンネル',
+      updateChannelStable: '安定版', updateChannelPreview: 'プレビュー', updateChannelDev: '開発版',
+      autoCheckUpdates: '毎日 09:00 / 19:00 に自動確認',
+    },
   };
-  const SUPPORTED_LOCALES = ['en', 'zh-CN', 'zh-TW'];
+  const SUPPORTED_LOCALES = ['en', 'zh-CN', 'zh-TW', 'ja'];
   function localeWidthClass(lang = 'en') {
     return String(lang || '').toLowerCase().startsWith('zh') ? 'compact' : 'wide';
   }
@@ -967,7 +1036,7 @@ export function createPresentation(turnFactory = createTurnPresentation) {
       + `</div>`
       + breakdownHtml;
   }
-  return { version: 73, SUPPORTED_LOCALES, localeWidthClass, dictionaries, locale, systemLocale, apply, appearance, formatReset, escapeHtml, formatTokens, cacheTooltip, cacheView, contextTooltips, renderContextTooltips, quotaTooltip, applyQuotaTooltips, alertView, renderAlerts, generationText, generationMarkup, renderGeneration, historyMarkup, renderHistory, renderSidebarHistory, parseComposerOrchestrator, resolveActiveOrchestratorModel, stepModelView, renderStepModelPopover, renderSidebarStepModel, ...turnMethods };
+  return { version: 74, SUPPORTED_LOCALES, localeWidthClass, dictionaries, locale, systemLocale, apply, appearance, formatReset, escapeHtml, formatTokens, cacheTooltip, cacheView, contextTooltips, renderContextTooltips, quotaTooltip, applyQuotaTooltips, alertView, renderAlerts, generationText, generationMarkup, renderGeneration, historyMarkup, renderHistory, renderSidebarHistory, parseComposerOrchestrator, resolveActiveOrchestratorModel, stepModelView, renderStepModelPopover, renderSidebarStepModel, ...turnMethods };
 }
 
-export const getPresentationScript = () => `if (globalThis.__agyPrismPresentation?.version !== 73) globalThis.__agyPrismPresentation = (${createPresentation.toString()})(${createTurnPresentation.toString()});`;
+export const getPresentationScript = () => `if (globalThis.__agyPrismPresentation?.version !== 74) globalThis.__agyPrismPresentation = (${createPresentation.toString()})(${createTurnPresentation.toString()});`;

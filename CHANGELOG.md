@@ -6,6 +6,34 @@ This file documents user-facing feature additions, visual refinements, and stabi
 
 ---
 
+## v2.1.0-pre-dev (Dev Channel) — 2026-11-28
+
+### 中文
+
+- **融合 `v2.1.0-pre` 全模块四语言支持 + `dev` 开发者扩展能力**：完整继承 `v2.1.0-pre` 的简体中文 / 繁體中文 / English / 日本語四语适配及 Insights「外观」语言切换器，同时保留 `dev` 通道的侧栏「设置」页、`globalThis.__agyPrismExt` 运行时扩展总线、自定义 CSS/覆写开关与 AI 开发 Prompt 一键复制功能。
+
+### English
+
+- **Combines `v2.1.0-pre` 4-Locale UI + `dev` Extension Platform**: Includes complete Simplified Chinese, Traditional Chinese, English, and Japanese localization and the Insights Appearance language switcher alongside the `dev` channel Settings tab, `globalThis.__agyPrismExt` extension bus, custom CSS/overrides, and copy-ready AI dev prompt.
+
+---
+
+## [v2.1.0-pre](https://github.com/Chiron-404/agy-prism-ui/releases/tag/v2.1.0-pre) (Preview) — 2026-11-28
+
+### 中文
+
+- **全模块四语言适配（`zh-CN` / `zh-TW` / `en` / `ja`）**：为 `settings.mjs`、`ui.mjs`、`turn_ui.mjs`、`heatmap_ui.mjs`（Insights 52 周看板、首页卡片、更新与外观浮窗）及 `optical_theme.mjs`（长代码块折叠按钮）完整补齐 **简体中文、繁體中文、English、日本語** 四套语言支持，彻底移除 Insights 中的硬编码简体中文。
+- **Insights「外观」浮窗内置语言切换器**：在 Insights 顶部「外观」浮窗新增轻量语言切换行（`简中` / `繁中` / `EN` / `日本語`），切换后实时同步更新 Prism Lens、Overview Telemetry、Insights 看板、首页活动卡片与代码块按钮文案。
+- **窄宽与长文案多语言防溢出优化**：针对英文与日文文案宽度调优 `Overview → Telemetry`（锁定原生 `320px`）、上下文与速率浮窗、外观浮窗与更新浮窗布局，确保四语言均无换行错位或文字遮挡。
+
+### English
+
+- **Full 4-Locale Multilingual Support (`zh-CN` / `zh-TW` / `en` / `ja`)**: Added complete **Simplified Chinese, Traditional Chinese, English, and Japanese** dictionaries across `settings.mjs`, `ui.mjs`, `turn_ui.mjs`, `heatmap_ui.mjs` (Insights 52-week dashboard, Home card, Appearance & Update popovers), and `optical_theme.mjs` (code block fold controls), eliminating all hardcoded Simplified Chinese strings from Insights.
+- **In-Popover Language Switcher in Insights Appearance**: Added a compact language selector (`简中` / `繁中` / `EN` / `日本語`) inside the Insights **Appearance** popover that updates Prism Lens, Overview Telemetry, Insights, Home card, and code-folding labels live.
+- **Multilingual Layout Hardening**: Tuned popover and `320px` `Overview → Telemetry` spacing/wrapping across compact (`zh-*`) and wide (`en`, `ja`) locales for zero text overlap or horizontal clipping.
+
+---
+
 ## [v2.0.3-dev](https://github.com/Chiron-404/agy-prism-ui/releases/tag/v2.0.3-dev) — 2026-11-28 (Dev Channel)
 
 ### 中文

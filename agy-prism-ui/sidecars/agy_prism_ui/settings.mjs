@@ -4,8 +4,8 @@ import { dirname, join } from 'node:path';
 
 export const DEFAULT_SETTINGS = Object.freeze({ language: 'en', settingsLanguage: 'zh-CN', panelLayout: 'natural', density: 'compact', quotaIndicator: 'ring', labelCase: 'lowercase', resetFormat: 'compact', contextLayout: 'columns', turnLayout: 'columns', contextMarker: 'square', turnMarker: 'square', showContextBreakdown: true, columnLabel: true, columnValue: true, columnPercent: false, columnOrder: 'label,value,percent', highlightActiveModel: false, hideUnavailableQuota: true, showCacheWarnings: true, showContextWarnings: true, showRequestErrors: true, showSpeed: true, speedAnimation: false, showRequestMetrics: true, showTurnMetrics: false, opticalLightTheme: 'crystal', opticalDarkTheme: 'obsidian', opticalPrismRim: true, opticalGlass: true, opticalMotion: true, opticalCodeTools: true, updateChannel: 'dev', autoCheckUpdates: true });
 const choices = {
-  language: ['en', 'zh-CN', 'zh-TW'],
-  settingsLanguage: ['en', 'zh-CN', 'zh-TW'],
+  language: ['en', 'zh-CN', 'zh-TW', 'ja'],
+  settingsLanguage: ['en', 'zh-CN', 'zh-TW', 'ja'],
   panelLayout: ['natural', 'matched'],
   density: ['compact', 'standard', 'spacious'],
   quotaIndicator: ['ring', 'bar'],

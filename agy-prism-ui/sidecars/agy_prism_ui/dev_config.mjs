@@ -87,7 +87,7 @@ export function createDevStore(configPath, cssPath) {
   };
 }
 
-export function buildAiDevPrompt({ pluginDir = '', version = '2.0.3-dev' } = {}) {
+export function buildAiDevPrompt({ pluginDir = '', version = '2.1.0-pre-dev' } = {}) {
   const dir = pluginDir || '~/.gemini/config/plugins/agy-prism-ui';
   return [
     `You are extending or customizing **Agy Prism UI v${version}** (installed at \`${dir}\`).`,

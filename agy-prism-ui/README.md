@@ -1,4 +1,4 @@
-# Agy Prism UI (`agy-prism-ui` · v2.0.3-dev)
+# Agy Prism UI (`agy-prism-ui` · v2.1.0-pre-dev)
 
 > **Provenance, Non-Originality & Credits (`IMMO-CHIRON` · `GNU GPL-3.0`)**
 >
