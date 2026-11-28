@@ -61,7 +61,7 @@
 
 ### 启用调试端口（界面注入与 Prism Lens）
 
-**Optical UI、Insights 活动热力图、Overview Telemetry 面板与 Prism Lens（底栏透镜）**均通过 Antigravity 的本机调试端口（CDP）注入界面。Antigravity 默认不开启该端口；未开启时仅「侧栏统计」可用，且侧栏顶部会提示未启用。开启方式：
+**Optical UI、Insights 活动热力图、Overview Telemetry 面板与 Prism Lens（底栏透镜）** 均通过 Antigravity 的本机调试端口（CDP）注入界面。Antigravity 默认不开启该端口；未开启时仅「侧栏统计」可用，且侧栏顶部会提示未启用。开启方式：
 
 - **Windows 安装引导**：运行 `install.bat` 或 `update.bat` 时，若检测到 Antigravity 快捷方式未带参数，会提示是否自动添加，按回车即可。
 - **Windows 一键脚本**：如需事后补设，可在仓库目录运行以下命令，为桌面、开始菜单与任务栏的 Antigravity 快捷方式添加 `--remote-debugging-port=0`（加 `-Undo` 可撤销）：
