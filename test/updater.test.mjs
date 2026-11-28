@@ -78,17 +78,20 @@ function buildTestZip(entries) {
 test('parseReleaseVersion, classifyReleaseChannel, compareVersions, and selectReleaseForChannel handle 3 channels', () => {
   assert.deepEqual(parseReleaseVersion('v2.0.3'), { raw: 'v2.0.3', major: 2, minor: 0, patch: 3, preTag: '', preNum: 0, channel: 'stable' });
   assert.deepEqual(parseReleaseVersion('v2.1.0-beta.2'), { raw: 'v2.1.0-beta.2', major: 2, minor: 1, patch: 0, preTag: 'beta', preNum: 2, channel: 'preview' });
+  assert.deepEqual(parseReleaseVersion('v2.1.0-pre'), { raw: 'v2.1.0-pre', major: 2, minor: 1, patch: 0, preTag: 'pre', preNum: 0, channel: 'preview' });
   assert.deepEqual(parseReleaseVersion('v2.0.3-dev'), { raw: 'v2.0.3-dev', major: 2, minor: 0, patch: 3, preTag: 'dev', preNum: 0, channel: 'dev' });
+  assert.deepEqual(parseReleaseVersion('v2.1.0-pre-dev'), { raw: 'v2.1.0-pre-dev', major: 2, minor: 1, patch: 0, preTag: 'pre-dev', preNum: 0, channel: 'dev' });
 
   assert.equal(compareVersions('v2.0.3', 'v2.0.3-beta.1'), 1);
   assert.equal(compareVersions('v2.0.3-beta.1', 'v2.0.3-dev'), 1);
+  assert.equal(compareVersions('v2.1.0-pre', 'v2.1.0-pre-dev'), 1);
   assert.equal(compareVersions('v2.0.3-dev.2', 'v2.0.3-dev.1'), 1);
 
   const releases = [
     { tag_name: 'v2.0.2', prerelease: false, draft: false, assets: [{ name: 'a.zip', browser_download_url: 'https://github.com/x/a.zip', digest: 'sha256:' + 'a'.repeat(64) }] },
     { tag_name: 'v2.0.3', prerelease: false, draft: false, assets: [{ name: 'b.zip', browser_download_url: 'https://github.com/x/b.zip', digest: 'sha256:' + 'b'.repeat(64) }] },
-    { tag_name: 'v2.1.0-beta.1', prerelease: true, draft: false, assets: [{ name: 'c.zip', browser_download_url: 'https://github.com/x/c.zip', digest: 'sha256:' + 'c'.repeat(64) }] },
-    { tag_name: 'v2.0.3-dev', prerelease: true, draft: false, assets: [{ name: 'd.zip', browser_download_url: 'https://github.com/x/d.zip', digest: 'sha256:' + 'd'.repeat(64) }] },
+    { tag_name: 'v2.1.0-pre', prerelease: true, draft: false, assets: [{ name: 'c.zip', browser_download_url: 'https://github.com/x/c.zip', digest: 'sha256:' + 'c'.repeat(64) }] },
+    { tag_name: 'v2.1.0-pre-dev', prerelease: true, draft: false, assets: [{ name: 'd.zip', browser_download_url: 'https://github.com/x/d.zip', digest: 'sha256:' + 'd'.repeat(64) }] },
     { tag_name: 'v2.0.9', prerelease: false, draft: true, assets: [{ name: 'e.zip', browser_download_url: 'https://github.com/x/e.zip' }] },
   ];
 
@@ -98,8 +101,8 @@ test('parseReleaseVersion, classifyReleaseChannel, compareVersions, and selectRe
   assert.equal(classifyReleaseChannel(releases[4]), null);
 
   assert.equal(selectReleaseForChannel(releases, 'stable').tag, 'v2.0.3');
-  assert.equal(selectReleaseForChannel(releases, 'preview').tag, 'v2.1.0-beta.1');
-  assert.equal(selectReleaseForChannel(releases, 'dev').tag, 'v2.0.3-dev');
+  assert.equal(selectReleaseForChannel(releases, 'preview').tag, 'v2.1.0-pre');
+  assert.equal(selectReleaseForChannel(releases, 'dev').tag, 'v2.1.0-pre-dev');
 });
 
 test('schedule slots trigger at 09:00 and 19:00 and catch up missed slots on startup', async () => {
