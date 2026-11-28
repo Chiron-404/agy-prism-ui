@@ -8,7 +8,7 @@ import { createSettingsStore, DEFAULT_SETTINGS } from '../agy-prism-ui/sidecars/
 
 test('optical theme defaults and clean-room CSS cover all 4 palettes and visual layers safely', () => {
   const engine = createOpticalThemeEngine();
-  assert.equal(engine.version, 13);
+  assert.equal(engine.version, 14);
   assert.equal(typeof engine.refreshPointer, 'function');
   assert.deepEqual(engine.DEFAULT_OPTICAL, {
     opticalLightTheme: 'crystal',

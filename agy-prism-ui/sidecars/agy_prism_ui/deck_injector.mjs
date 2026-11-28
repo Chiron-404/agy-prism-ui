@@ -77,11 +77,11 @@ function pageMount(d) {
   }
 
   // Upgrade or initialize DOM structure in-place
-  if (root.getAttribute('data-deck-ver') !== '123') {
+  if (root.getAttribute('data-deck-ver') !== '125') {
     release(root);
     root._pinnedGroup = null;
     root.removeAttribute('data-pinned');
-    root.setAttribute('data-deck-ver', '123');
+    root.setAttribute('data-deck-ver', '125');
     root._speedActivity = null;
     root._motionPrev = null;
     root.style.cssText = [
@@ -1734,7 +1734,14 @@ function installRuntime(owner, hash) {
           opticalPrefs = { ...(opticalPrefs || {}), ...patch };
           pendingSettingsPatch = { ...(pendingSettingsPatch || {}), ...patch };
           settingsPatchSeq++;
+          if (data) {
+            data = { ...data, prefs: { ...(data.prefs || {}), ...patch } };
+            pageMount(toView(data));
+          }
+          const hh = document.getElementById('agy-heatmap-home-host')?.shadowRoot;
+          if (hh) hh._hmHomeKey = '';
           globalThis.__agyPrismOptical?.apply(opticalPrefs);
+          syncOverviewTelemetry();
           ensureHeatmapChrome();
         },
         onCheckUpdate: (channel) => {
@@ -1789,6 +1796,7 @@ function installRuntime(owner, hash) {
         composer.insertAdjacentElement('beforebegin', homeHost);
       }
       hmUi.renderHomeHeatmapCard(homeHost.shadowRoot, heatmapData, {
+        prefs: opticalPrefs,
         updateStatus,
         onOpenFull: () => {
           heatmapOpen = true;

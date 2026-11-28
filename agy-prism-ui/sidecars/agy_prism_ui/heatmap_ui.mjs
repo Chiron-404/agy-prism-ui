@@ -88,14 +88,403 @@ export function createHeatmapRenderer() {
 
   const DEFAULT_THEME = 'blue';
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const SUPPORTED_HM_LOCALES = ['zh-CN'];
+  const SUPPORTED_HM_LOCALES = ['zh-CN', 'zh-TW', 'en', 'ja'];
   const HM_I18N = {
     'zh-CN': {
-      noActivity: '0（无活动）',
+      readonlyBadge: '只读 · 本地会话日志',
       refresh: '刷新',
       close: '关闭',
       appearance: '外观',
       updates: '更新',
+      sourceAll: '全部',
+      palette: '配色',
+      langLabel: '语言',
+      lightPalette: '浅色配色',
+      darkPalette: '深色配色',
+      optFrost: '白昼',
+      optIvory: '晨光',
+      optNoir: '午夜',
+      optGraphite: '暮色',
+      optNative: '原生',
+      optPrismRim: '棱镜流光',
+      optGlass: '玻璃质感',
+      optMotion: '渐现动效',
+      optCodeTools: '代码折叠',
+      optReset: '还原原生',
+      chStable: '正式版',
+      chPreview: '预览版',
+      chDev: '开发版',
+      updCurrent: '当前 v{ver}',
+      updChannelLabel: '发行通道',
+      updAutoCheck: '每日 09:00 / 19:00 自动检查更新',
+      updNotChecked: '尚未检查',
+      updIdle: '点击「立即检查」获取最新版本',
+      updApplying: '正在下载并热更新 {tag}…',
+      updApplied: '已更新至 {tag}，正在热重载…',
+      updChecking: '正在检查 {ch} 更新…',
+      updError: '检查/更新失败：{err}',
+      updSwitchAvail: '可切换至{ch} {tag}',
+      updNewAvail: '发现新版本 {tag}',
+      updUpToDate: '当前已是最新（{tag}）',
+      updNextAuto: '下次自动：{time}',
+      updAutoOff: '已关闭自动检查',
+      updLast: '上次：{time} · {next}',
+      updBtnApplying: '更新中…',
+      updBtnSwitch: '一键切换',
+      updBtnApply: '一键更新',
+      updBtnChecking: '检查中…',
+      updBtnCheck: '立即检查',
+      updReleaseLink: '查看 Release 详情 ↗',
+      updHomePill: '新版本 {tag}',
+      updHomeTitle: '查看新版本并一键更新',
+      kpiTotalTokens: '累计总 Token',
+      kpiTotal: '总计',
+      kpiUncachedIn: '非缓存输入 (In)',
+      kpiCacheRead: '缓存读取 (Cache)',
+      kpiOutput: '输出 (Out)',
+      kpiThinking: '思考 (Think)',
+      kpiEstCost: '估算费用',
+      kpiActiveStreak: '活跃天数 / 连续',
+      kpiDaysUnit: '天',
+      kpiCurStreak: '当前连续 {cur} 天 · 最长 {max} 天',
+      kpiLongestTitle: '最长连续 {max} 天',
+      kpiTotalConvs: '总会话数',
+      kpiMainConvs: '主会话 {main} · 子智能体 {sub}',
+      kpiPeakDay: '单日最高',
+      kpiCacheHit: '全局缓存命中 {pct}%{day}',
+      chart52w: '52 周活跃热力图',
+      chartLoading: '正在读取本地会话数据库…',
+      chart14d: '近 14 天用量',
+      chart14dToday: '今日 {val}',
+      chart14dEmpty: '暂无近 14 天数据',
+      chartMonthly: '月度趋势与累计曲线',
+      chartMonthlyCum: '累计 {val}',
+      chartMonthlyMonth: '{m} · 当月 {t} · 累计 {cum}',
+      chartMonthlyEmpty: '暂无月度趋势数据',
+      legendLess: '少',
+      legendMore: '多',
+      noActivity: '0（无活动）',
+      scaleNone: '无（{val}）',
+      weekdays: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'],
+      clickForDetail: '点击方格查看单日详情',
+      convsUnit: '会话',
+      reqsUnit: '次',
+      inclThink: '含思 {val}',
+      dpInput: '输入 Input',
+      dpCache: '缓存 Cache',
+      dpOutput: '输出 Output',
+      dpEstCost: '估算费用',
+      homeLoading: '加载中…',
+      homeAria: 'Insights 活跃矩阵',
+      homeLast14: '近 14 天',
+      homeLast12w: '近 12 周',
+      homeCum: '累计 {val}',
+      homeStreak: '连续 {n} 天',
+      homeKpiTotal: '累计 Token',
+      homeKpiActive: '活跃 / 连续',
+      homeKpiActiveVal: '{days} 天 · {cur} 连',
+      homeKpiPeak: '单日峰值',
+      homeKpiCache: '缓存命中',
+      homeOpenTitle: '打开 Insights 完整视图',
+      homeExpandTitle: '展开近 12 周',
+      homeCollapseTitle: '收起为近 14 天',
+    },
+    'zh-TW': {
+      readonlyBadge: '唯讀 · 本機工作階段日誌',
+      refresh: '重新整理',
+      close: '關閉',
+      appearance: '外觀',
+      updates: '更新',
+      sourceAll: '全部',
+      palette: '配色',
+      langLabel: '語言',
+      lightPalette: '淺色配色',
+      darkPalette: '深色配色',
+      optFrost: '白晝',
+      optIvory: '晨光',
+      optNoir: '午夜',
+      optGraphite: '暮色',
+      optNative: '原生',
+      optPrismRim: '稜鏡流光',
+      optGlass: '玻璃質感',
+      optMotion: '漸現動效',
+      optCodeTools: '程式碼摺疊',
+      optReset: '還原原生',
+      chStable: '正式版',
+      chPreview: '預覽版',
+      chDev: '開發版',
+      updCurrent: '目前 v{ver}',
+      updChannelLabel: '發行通道',
+      updAutoCheck: '每日 09:00 / 19:00 自動檢查更新',
+      updNotChecked: '尚未檢查',
+      updIdle: '點擊「立即檢查」取得最新版本',
+      updApplying: '正在下載並熱更新 {tag}…',
+      updApplied: '已更新至 {tag}，正在熱重載…',
+      updChecking: '正在檢查 {ch} 更新…',
+      updError: '檢查/更新失敗：{err}',
+      updSwitchAvail: '可切換至{ch} {tag}',
+      updNewAvail: '發現新版本 {tag}',
+      updUpToDate: '目前已是最新（{tag}）',
+      updNextAuto: '下次自動：{time}',
+      updAutoOff: '已關閉自動檢查',
+      updLast: '上次：{time} · {next}',
+      updBtnApplying: '更新中…',
+      updBtnSwitch: '一鍵切換',
+      updBtnApply: '一鍵更新',
+      updBtnChecking: '檢查中…',
+      updBtnCheck: '立即檢查',
+      updReleaseLink: '檢視 Release 詳情 ↗',
+      updHomePill: '新版本 {tag}',
+      updHomeTitle: '檢視新版本並一鍵更新',
+      kpiTotalTokens: '累計總 Token',
+      kpiTotal: '總計',
+      kpiUncachedIn: '非快取輸入 (In)',
+      kpiCacheRead: '快取讀取 (Cache)',
+      kpiOutput: '輸出 (Out)',
+      kpiThinking: '思考 (Think)',
+      kpiEstCost: '估算費用',
+      kpiActiveStreak: '活躍天數 / 連續',
+      kpiDaysUnit: '天',
+      kpiCurStreak: '目前連續 {cur} 天 · 最長 {max} 天',
+      kpiLongestTitle: '最長連續 {max} 天',
+      kpiTotalConvs: '總工作階段數',
+      kpiMainConvs: '主工作階段 {main} · 子代理 {sub}',
+      kpiPeakDay: '單日最高',
+      kpiCacheHit: '全域快取命中 {pct}%{day}',
+      chart52w: '52 週活躍熱力圖',
+      chartLoading: '正在讀取本機工作階段資料庫…',
+      chart14d: '近 14 天用量',
+      chart14dToday: '今日 {val}',
+      chart14dEmpty: '暫無近 14 天資料',
+      chartMonthly: '月度趨勢與累計曲線',
+      chartMonthlyCum: '累計 {val}',
+      chartMonthlyMonth: '{m} · 當月 {t} · 累計 {cum}',
+      chartMonthlyEmpty: '暫無月度趨勢資料',
+      legendLess: '少',
+      legendMore: '多',
+      noActivity: '0（無活動）',
+      scaleNone: '無（{val}）',
+      weekdays: ['週日', '週一', '週二', '週三', '週四', '週五', '週六'],
+      clickForDetail: '點擊方格檢視單日詳情',
+      convsUnit: '工作階段',
+      reqsUnit: '次',
+      inclThink: '含思 {val}',
+      dpInput: '輸入 Input',
+      dpCache: '快取 Cache',
+      dpOutput: '輸出 Output',
+      dpEstCost: '估算費用',
+      homeLoading: '載入中…',
+      homeAria: 'Insights 活躍矩陣',
+      homeLast14: '近 14 天',
+      homeLast12w: '近 12 週',
+      homeCum: '累計 {val}',
+      homeStreak: '連續 {n} 天',
+      homeKpiTotal: '累計 Token',
+      homeKpiActive: '活躍 / 連續',
+      homeKpiActiveVal: '{days} 天 · {cur} 連',
+      homeKpiPeak: '單日峰值',
+      homeKpiCache: '快取命中',
+      homeOpenTitle: '開啟 Insights 完整檢視',
+      homeExpandTitle: '展開近 12 週',
+      homeCollapseTitle: '收合為近 14 天',
+    },
+    en: {
+      readonlyBadge: 'Read-only · Local logs',
+      refresh: 'Refresh',
+      close: 'Close',
+      appearance: 'Appearance',
+      updates: 'Updates',
+      sourceAll: 'All',
+      palette: 'Palette',
+      langLabel: 'Language',
+      lightPalette: 'Light',
+      darkPalette: 'Dark',
+      optFrost: 'Frost',
+      optIvory: 'Ivory',
+      optNoir: 'Noir',
+      optGraphite: 'Graphite',
+      optNative: 'Native',
+      optPrismRim: 'Prism rim',
+      optGlass: 'Frosted glass',
+      optMotion: 'Stream fade',
+      optCodeTools: 'Code fold',
+      optReset: 'Reset native',
+      chStable: 'Stable',
+      chPreview: 'Preview',
+      chDev: 'Dev',
+      updCurrent: 'Current v{ver}',
+      updChannelLabel: 'Channel',
+      updAutoCheck: 'Auto-check at 09:00 & 19:00',
+      updNotChecked: 'Not checked yet',
+      updIdle: 'Click Check now for latest release',
+      updApplying: 'Downloading & applying {tag}…',
+      updApplied: 'Updated to {tag}, reloading…',
+      updChecking: 'Checking {ch} updates…',
+      updError: 'Check/update failed: {err}',
+      updSwitchAvail: 'Switch to {ch} {tag}',
+      updNewAvail: 'Update {tag} available',
+      updUpToDate: 'Up to date ({tag})',
+      updNextAuto: 'Next: {time}',
+      updAutoOff: 'Auto-check off',
+      updLast: 'Last: {time} · {next}',
+      updBtnApplying: 'Updating…',
+      updBtnSwitch: 'Switch & update',
+      updBtnApply: 'Update now',
+      updBtnChecking: 'Checking…',
+      updBtnCheck: 'Check now',
+      updReleaseLink: 'View release notes ↗',
+      updHomePill: 'New {tag}',
+      updHomeTitle: 'View release details and update',
+      kpiTotalTokens: 'Total tokens',
+      kpiTotal: 'Total',
+      kpiUncachedIn: 'Uncached input',
+      kpiCacheRead: 'Cache read',
+      kpiOutput: 'Output',
+      kpiThinking: 'Thinking',
+      kpiEstCost: 'Est. cost',
+      kpiActiveStreak: 'Active / Streak',
+      kpiDaysUnit: 'd',
+      kpiCurStreak: 'Current {cur}d · Best {max}d',
+      kpiLongestTitle: 'Longest streak: {max} days',
+      kpiTotalConvs: 'Conversations',
+      kpiMainConvs: 'Main {main} · Subagents {sub}',
+      kpiPeakDay: 'Peak day',
+      kpiCacheHit: 'Cache hit {pct}%{day}',
+      chart52w: '52-week activity',
+      chartLoading: 'Reading local session logs…',
+      chart14d: 'Last 14 days',
+      chart14dToday: 'Today {val}',
+      chart14dEmpty: 'No 14-day activity',
+      chartMonthly: 'Monthly & cumulative',
+      chartMonthlyCum: 'Total {val}',
+      chartMonthlyMonth: '{m} · Month {t} · Total {cum}',
+      chartMonthlyEmpty: 'No monthly data',
+      legendLess: 'Less',
+      legendMore: 'More',
+      noActivity: '0 (No activity)',
+      scaleNone: 'Empty ({val})',
+      weekdays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      clickForDetail: 'Click a square for daily details',
+      convsUnit: 'chats',
+      reqsUnit: 'reqs',
+      inclThink: 'incl. Think {val}',
+      dpInput: 'Input',
+      dpCache: 'Cache',
+      dpOutput: 'Output',
+      dpEstCost: 'Est. cost',
+      homeLoading: 'Loading…',
+      homeAria: 'Insights activity grid',
+      homeLast14: '14 days',
+      homeLast12w: '12 weeks',
+      homeCum: 'Total {val}',
+      homeStreak: '{n}d streak',
+      homeKpiTotal: 'Total',
+      homeKpiActive: 'Active / Streak',
+      homeKpiActiveVal: '{days}d · {cur}d streak',
+      homeKpiPeak: 'Peak day',
+      homeKpiCache: 'Cache hit',
+      homeOpenTitle: 'Open Insights dashboard',
+      homeExpandTitle: 'Expand 12 weeks',
+      homeCollapseTitle: 'Collapse to 14 days',
+    },
+    ja: {
+      readonlyBadge: '読取専用 · ローカルログ',
+      refresh: '再読込',
+      close: '閉じる',
+      appearance: '外観',
+      updates: 'アップデート',
+      sourceAll: 'すべて',
+      palette: '配色',
+      langLabel: '言語',
+      lightPalette: 'ライト',
+      darkPalette: 'ダーク',
+      optFrost: 'Frost',
+      optIvory: 'Ivory',
+      optNoir: 'Noir',
+      optGraphite: 'Graphite',
+      optNative: 'ネイティブ',
+      optPrismRim: 'プリズム枠光',
+      optGlass: 'すりガラス',
+      optMotion: 'フェード効果',
+      optCodeTools: 'コード折畳',
+      optReset: '既定に戻す',
+      chStable: '安定版',
+      chPreview: 'プレビュー',
+      chDev: '開発版',
+      updCurrent: '現在 v{ver}',
+      updChannelLabel: 'チャンネル',
+      updAutoCheck: '毎日 09:00 / 19:00 に自動確認',
+      updNotChecked: '未確認',
+      updIdle: '「今すぐ確認」で最新版を取得',
+      updApplying: '{tag} をダウンロード・適用中…',
+      updApplied: '{tag} に更新完了、再読込中…',
+      updChecking: '{ch} の更新を確認中…',
+      updError: '確認/更新失敗：{err}',
+      updSwitchAvail: '{ch} {tag} へ切替可能',
+      updNewAvail: '新バージョン {tag} を検出',
+      updUpToDate: '最新です（{tag}）',
+      updNextAuto: '次回自動：{time}',
+      updAutoOff: '自動確認オフ',
+      updLast: '前回：{time} · {next}',
+      updBtnApplying: '更新中…',
+      updBtnSwitch: '今すぐ切替',
+      updBtnApply: '今すぐ更新',
+      updBtnChecking: '確認中…',
+      updBtnCheck: '今すぐ確認',
+      updReleaseLink: 'Release 詳細を開く ↗',
+      updHomePill: '新版 {tag}',
+      updHomeTitle: '新バージョンを確認して更新',
+      kpiTotalTokens: '累計トークン',
+      kpiTotal: '合計',
+      kpiUncachedIn: '非キャッシュ入力',
+      kpiCacheRead: 'キャッシュ読込',
+      kpiOutput: '出力 (Out)',
+      kpiThinking: '思考 (Think)',
+      kpiEstCost: '推定費用',
+      kpiActiveStreak: '稼働日数 / 連続',
+      kpiDaysUnit: '日',
+      kpiCurStreak: '現在 {cur}日 · 最長 {max}日',
+      kpiLongestTitle: '最長連続 {max} 日',
+      kpiTotalConvs: '総セッション数',
+      kpiMainConvs: 'メイン {main} · サブエージェント {sub}',
+      kpiPeakDay: '1日最大',
+      kpiCacheHit: 'キャッシュ率 {pct}%{day}',
+      chart52w: '52週アクティビティ',
+      chartLoading: 'ローカルログを読込中…',
+      chart14d: '直近14日間',
+      chart14dToday: '今日 {val}',
+      chart14dEmpty: '直近14日データなし',
+      chartMonthly: '月間推移・累計',
+      chartMonthlyCum: '累計 {val}',
+      chartMonthlyMonth: '{m} · 当月 {t} · 累計 {cum}',
+      chartMonthlyEmpty: '月間データなし',
+      legendLess: '少',
+      legendMore: '多',
+      noActivity: '0（活動なし）',
+      scaleNone: '該当なし（{val}）',
+      weekdays: ['日', '月', '火', '水', '木', '金', '土'],
+      clickForDetail: 'マスをクリックで詳細表示',
+      convsUnit: '件',
+      reqsUnit: '回',
+      inclThink: '思考 {val} 含む',
+      dpInput: '入力 Input',
+      dpCache: 'キャッシュ',
+      dpOutput: '出力 Output',
+      dpEstCost: '推定費用',
+      homeLoading: '読込中…',
+      homeAria: 'Insights 活動マトリクス',
+      homeLast14: '直近14日',
+      homeLast12w: '直近12週',
+      homeCum: '累計 {val}',
+      homeStreak: '{n}日連続',
+      homeKpiTotal: '累計トークン',
+      homeKpiActive: '稼働 / 連続',
+      homeKpiActiveVal: '{days}日 · {cur}連続',
+      homeKpiPeak: '日次最大',
+      homeKpiCache: 'キャッシュ率',
+      homeOpenTitle: 'Insights ダッシュボードを開く',
+      homeExpandTitle: '12週間を展開',
+      homeCollapseTitle: '14日間に折りたたむ',
     },
   };
   function resolveHmLang(prefs = null) {
@@ -103,7 +492,12 @@ export function createHeatmapRenderer() {
     return HM_I18N[req] ? req : 'zh-CN';
   }
   function hmT(lang, key) {
-    return HM_I18N[lang]?.[key] || HM_I18N['zh-CN'][key] || key;
+    return HM_I18N[lang]?.[key] ?? HM_I18N['zh-CN'][key] ?? key;
+  }
+  function hmFmt(lang, key, vars = {}) {
+    let s = String(hmT(lang, key));
+    for (const [k, v] of Object.entries(vars)) s = s.replaceAll(`{${k}}`, String(v ?? ''));
+    return s;
   }
 
   function esc(v) {
@@ -210,21 +604,19 @@ export function createHeatmapRenderer() {
     ].join('|');
   }
 
-  function fmtCheckTime(ms) {
+  function fmtCheckTime(ms, lang = 'zh-CN') {
     const v = Number(ms) || 0;
-    if (!v) return '尚未检查';
+    if (!v) return hmT(lang, 'updNotChecked');
     const d = new Date(v);
-    if (!Number.isFinite(d.getTime())) return '尚未检查';
+    if (!Number.isFinite(d.getTime())) return hmT(lang, 'updNotChecked');
     const p = n => String(n).padStart(2, '0');
     return `${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
   }
 
-  const CHANNEL_NAMES = { stable: '正式版', preview: '预览版', dev: '开发版' };
-
-  function buildUpdatePanelHtml({ updateStatus, prefs, updOpen, hasUpdateControl }) {
+  function buildUpdatePanelHtml({ updateStatus, prefs, updOpen, hasUpdateControl, lang = 'zh-CN' }) {
     if (!hasUpdateControl) return '';
     const upd = updateStatus || {};
-    const curVer = String(upd.currentVersion || '2.0.3').replace(/^v/i, '');
+    const curVer = String(upd.currentVersion || '2.1.0-pre').replace(/^v/i, '');
     const channel = ['stable', 'preview', 'dev'].includes(prefs?.updateChannel || upd.channel) ? (prefs?.updateChannel || upd.channel) : 'stable';
     const autoCheck = prefs?.autoCheckUpdates !== undefined ? prefs.autoCheckUpdates !== false : upd.autoCheckUpdates !== false;
     const latest = upd.latest || null;
@@ -232,52 +624,61 @@ export function createHeatmapRenderer() {
     const isApplying = Boolean(upd.applying || upd.state === 'applying');
     const isApplied = upd.state === 'applied';
     const hasBadge = Boolean(upd.updateAvailable && !isApplying && !isApplied);
+    const chNames = {
+      stable: hmT(lang, 'chStable'),
+      preview: hmT(lang, 'chPreview'),
+      dev: hmT(lang, 'chDev'),
+    };
 
     let statusTone = '';
-    let statusText = '点击「立即检查」获取最新版本';
+    let statusText = hmT(lang, 'updIdle');
     if (isApplying) {
       statusTone = 'info';
-      statusText = `正在下载并热更新 ${latest?.tag || ''}…`;
+      statusText = hmFmt(lang, 'updApplying', { tag: latest?.tag || '' });
     } else if (isApplied) {
       statusTone = 'ok';
-      statusText = `已更新至 ${upd.appliedVersion || latest?.tag || ''}，正在热重载…`;
+      statusText = hmFmt(lang, 'updApplied', { tag: upd.appliedVersion || latest?.tag || '' });
     } else if (isChecking) {
       statusTone = 'info';
-      statusText = `正在检查 ${CHANNEL_NAMES[channel]} 更新…`;
+      statusText = hmFmt(lang, 'updChecking', { ch: chNames[channel] || channel });
     } else if (upd.error) {
       statusTone = 'err';
-      statusText = `检查/更新失败：${upd.error}`;
+      statusText = hmFmt(lang, 'updError', { err: upd.error });
     } else if (upd.updateAvailable && latest) {
       statusTone = 'avail';
       statusText = upd.actionKind === 'switch'
-        ? `可切换至${CHANNEL_NAMES[channel]} ${latest.tag}`
-        : `发现新版本 ${latest.tag}`;
+        ? hmFmt(lang, 'updSwitchAvail', { ch: chNames[channel] || channel, tag: latest.tag })
+        : hmFmt(lang, 'updNewAvail', { tag: latest.tag });
     } else if (upd.state === 'up-to-date' || upd.lastCheckedAt > 0) {
       statusTone = 'ok';
-      statusText = `当前已是最新（${latest?.tag || ('v' + curVer)}）`;
+      statusText = hmFmt(lang, 'updUpToDate', { tag: latest?.tag || ('v' + curVer) });
     }
 
-    const nextText = autoCheck ? `下次自动：${upd.nextCheckLabel || '09:00 / 19:00'}` : '已关闭自动检查';
-    const metaText = `上次：${fmtCheckTime(upd.lastCheckedAt)} · ${nextText}`;
-    const applyLabel = isApplying ? '更新中…' : (upd.actionKind === 'switch' ? '一键切换' : '一键更新');
+    const nextText = autoCheck
+      ? hmFmt(lang, 'updNextAuto', { time: upd.nextCheckLabel || '09:00 / 19:00' })
+      : hmT(lang, 'updAutoOff');
+    const metaText = hmFmt(lang, 'updLast', { time: fmtCheckTime(upd.lastCheckedAt, lang), next: nextText });
+    const applyLabel = isApplying
+      ? hmT(lang, 'updBtnApplying')
+      : (upd.actionKind === 'switch' ? hmT(lang, 'updBtnSwitch') : hmT(lang, 'updBtnApply'));
 
     return `<div class="hm-upd-wrap">`
-      + `<button type="button" class="hm-btn hm-upd-btn" data-hm-action="update-toggle" aria-expanded="${updOpen ? 'true' : 'false'}">更新${hasBadge ? '<span class="hm-upd-dot" aria-hidden="true"></span>' : ''}</button>`
+      + `<button type="button" class="hm-btn hm-upd-btn" data-hm-action="update-toggle" aria-expanded="${updOpen ? 'true' : 'false'}">${esc(hmT(lang, 'updates'))}${hasBadge ? '<span class="hm-upd-dot" aria-hidden="true"></span>' : ''}</button>`
       + `<div class="hm-upd-pop" data-open="${updOpen ? 'true' : 'false'}" aria-hidden="${updOpen ? 'false' : 'true'}">`
-      + `  <div class="hm-upd-head"><span class="hm-upd-ver">当前 v${esc(curVer)}</span><span class="hm-upd-ch">${esc(CHANNEL_NAMES[channel] || channel)}</span></div>`
-      + `  <div class="hm-opt-row"><span class="hm-opt-lbl">发行通道</span><span class="hm-opt-picks">`
-      + `    <button type="button" class="hm-opt-pick" data-upd-channel="stable" data-active="${channel === 'stable'}">正式版</button>`
-      + `    <button type="button" class="hm-opt-pick" data-upd-channel="preview" data-active="${channel === 'preview'}">预览版</button>`
-      + `    <button type="button" class="hm-opt-pick" data-upd-channel="dev" data-active="${channel === 'dev'}">开发版</button>`
+      + `  <div class="hm-upd-head"><span class="hm-upd-ver">${esc(hmFmt(lang, 'updCurrent', { ver: curVer }))}</span><span class="hm-upd-ch">${esc(chNames[channel] || channel)}</span></div>`
+      + `  <div class="hm-opt-row"><span class="hm-opt-lbl">${esc(hmT(lang, 'updChannelLabel'))}</span><span class="hm-opt-picks">`
+      + `    <button type="button" class="hm-opt-pick" data-upd-channel="stable" data-active="${channel === 'stable'}">${esc(chNames.stable)}</button>`
+      + `    <button type="button" class="hm-opt-pick" data-upd-channel="preview" data-active="${channel === 'preview'}">${esc(chNames.preview)}</button>`
+      + `    <button type="button" class="hm-opt-pick" data-upd-channel="dev" data-active="${channel === 'dev'}">${esc(chNames.dev)}</button>`
       + `  </span></div>`
-      + `  <label class="hm-opt-chk"><input type="checkbox" data-upd-chk="autoCheckUpdates"${autoCheck ? ' checked' : ''}/><span>每日 09:00 / 19:00 自动检查更新</span></label>`
+      + `  <label class="hm-opt-chk"><input type="checkbox" data-upd-chk="autoCheckUpdates"${autoCheck ? ' checked' : ''}/><span>${esc(hmT(lang, 'updAutoCheck'))}</span></label>`
       + `  <div class="hm-upd-status" data-tone="${statusTone}"><div>${esc(statusText)}</div><div class="hm-upd-meta">${esc(metaText)}</div>`
       + (latest?.summary ? `<div class="hm-upd-summary">${esc(latest.summary)}</div>` : '')
-      + (latest?.htmlUrl ? `<a class="hm-upd-link" href="${esc(latest.htmlUrl)}" target="_blank" rel="noopener">查看 Release 详情 ↗</a>` : '')
+      + (latest?.htmlUrl ? `<a class="hm-upd-link" href="${esc(latest.htmlUrl)}" target="_blank" rel="noopener">${esc(hmT(lang, 'updReleaseLink'))}</a>` : '')
       + `  </div>`
       + `  <div class="hm-upd-actions">`
-      + (upd.updateAvailable && !isApplied ? `<button type="button" class="hm-btn hm-btn-primary" data-hm-action="update-apply"${isApplying ? ' disabled' : ''}>${applyLabel}</button>` : '')
-      + `    <button type="button" class="hm-btn" data-hm-action="update-check"${isChecking || isApplying ? ' disabled' : ''}>${isChecking ? '检查中…' : '立即检查'}</button>`
+      + (upd.updateAvailable && !isApplied ? `<button type="button" class="hm-btn hm-btn-primary" data-hm-action="update-apply"${isApplying ? ' disabled' : ''}>${esc(applyLabel)}</button>` : '')
+      + `    <button type="button" class="hm-btn" data-hm-action="update-check"${isChecking || isApplying ? ' disabled' : ''}>${esc(isChecking ? hmT(lang, 'updBtnChecking') : hmT(lang, 'updBtnCheck'))}</button>`
       + `  </div>`
       + `</div></div>`;
   }
@@ -289,13 +690,13 @@ export function createHeatmapRenderer() {
     return String(Number(v.toPrecision(3)));
   }
 
-  function buildLegendHtml(palette, scale) {
+  function buildLegendHtml(palette, scale, lang = 'zh-CN') {
     const thresholds = Array.isArray(scale?.thresholds) ? scale.thresholds : null;
     const hasBounds = Boolean(thresholds && thresholds.length >= palette.length - 1 && Number(scale?.max) > 0);
     const boxes = palette.map((c, idx) => {
       let tip;
       if (idx === 0) {
-        tip = '0（无活动）';
+        tip = hmT(lang, 'noActivity');
       } else if (hasBounds) {
         if (idx === 1) {
           tip = `≤ ${fmtScaleBound(thresholds[0])}`;
@@ -305,7 +706,7 @@ export function createHeatmapRenderer() {
           if (idx === palette.length - 1 && cur <= prev) {
             tip = `= ${fmtScaleBound(scale.max)}`;
           } else if (cur <= prev) {
-            tip = `无（${fmtScaleBound(cur)}）`;
+            tip = hmFmt(lang, 'scaleNone', { val: fmtScaleBound(cur) });
           } else {
             tip = `${fmtScaleBound(prev)} – ${fmtScaleBound(cur)}`;
           }
@@ -315,7 +716,7 @@ export function createHeatmapRenderer() {
       }
       return `<i class="hm-legend-box" style="background:${c}" title="${esc(tip)}"></i>`;
     }).join('');
-    return `<span class="hm-legend">少 ${boxes} 多</span>`;
+    return `<span class="hm-legend">${esc(hmT(lang, 'legendLess'))} ${boxes} ${esc(hmT(lang, 'legendMore'))}</span>`;
   }
 
   function loadSavedTheme() {
@@ -388,21 +789,30 @@ export function createHeatmapRenderer() {
     }
   }
 
-  function formatCompactDay(day) {
-    if (!day || !day.d) return '点击方格查看单日详情';
-    const parts = [`${day.d}`, fmtTok(day.t), `${day.n || 0} 会话`];
+  function fmtCountUnit(count, key, lang = 'zh-CN') {
+    const n = Math.max(0, Number(count) || 0);
+    if (lang === 'ja') return `${n}${hmT(lang, key)}`;
+    if (lang === 'en' && n === 1) {
+      if (key === 'convsUnit') return '1 chat';
+      if (key === 'reqsUnit') return '1 req';
+    }
+    return `${n} ${hmT(lang, key)}`;
+  }
+
+  function formatCompactDay(day, lang = 'zh-CN') {
+    if (!day || !day.d) return hmT(lang, 'clickForDetail');
+    const parts = [`${day.d}`, fmtTok(day.t), fmtCountUnit(day.n || 0, 'convsUnit', lang)];
     if (day.usd > 0) parts.push(fmtUsd(day.usd));
     return parts.join(' · ');
   }
 
-  const WEEKDAYS_ZH = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-
-  function getWeekdayZh(dateStr) {
+  function getWeekdayLabel(dateStr, lang = 'zh-CN') {
     if (!dateStr) return '';
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
     if (!m) return '';
     const dt = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-    return WEEKDAYS_ZH[dt.getDay()] || '';
+    const list = HM_I18N[lang]?.weekdays || HM_I18N['zh-CN'].weekdays;
+    return list[dt.getDay()] || '';
   }
 
   function getDayPopCss(accent, dark) {
@@ -575,7 +985,7 @@ export function createHeatmapRenderer() {
         }`;
   }
 
-  function buildDayPopInner(day, palette) {
+  function buildDayPopInner(day, palette, lang = 'zh-CN') {
     const t = Math.max(0, Number(day.t) || 0);
     const i = Math.max(0, Number(day.i) || 0);
     const c = Math.max(0, Number(day.c) || 0);
@@ -583,31 +993,33 @@ export function createHeatmapRenderer() {
     const sum = Math.max(1, i + c + o);
     const hitPct = i + c > 0 ? ((c / (i + c)) * 100).toFixed(1) : '0.0';
     const dotColor = palette[Math.max(0, Math.min(palette.length - 1, day.l || 0))] || palette[0];
-    const wk = getWeekdayZh(day.d);
+    const wk = getWeekdayLabel(day.d, lang);
     const convCount = Math.max(0, Number(day.n) || 0);
     const reqs = Math.max(0, Number(day.r ?? day.reqs) || 0);
     const think = Math.max(0, Number(day.th ?? day.k) || 0);
-    const subParts = [`${convCount} 会话`];
-    if (reqs > 0) subParts.push(`${reqs} 次`);
+    const convLabel = fmtCountUnit(convCount, 'convsUnit', lang);
+    const reqLabel = fmtCountUnit(reqs, 'reqsUnit', lang);
+    const subParts = [convLabel];
+    if (reqs > 0) subParts.push(reqLabel);
     const costLabel = day.usd > 0 ? fmtUsd(day.usd) : '—';
     const cacheText = c > 0 ? `${fmtTok(c)} (${hitPct}%)` : '0';
-    const outText = think > 0 ? `${fmtTok(o)} (含思 ${fmtTok(think)})` : fmtTok(o);
+    const outText = think > 0 ? `${fmtTok(o)} (${hmFmt(lang, 'inclThink', { val: fmtTok(think) })})` : fmtTok(o);
 
     return `<div class="hm-dp-head">`
-      + `  <div class="hm-dp-date-wrap"><span class="hm-dp-dot" style="background:${dotColor}"></span><span class="hm-dp-date">${esc(day.d)}</span>${wk ? `<span class="hm-dp-wk">${wk}</span>` : ''}</div>`
-      + `  <button type="button" class="hm-dp-close" data-hm-dp-close aria-label="关闭">×</button>`
+      + `  <div class="hm-dp-date-wrap"><span class="hm-dp-dot" style="background:${dotColor}"></span><span class="hm-dp-date">${esc(day.d)}</span>${wk ? `<span class="hm-dp-wk">${esc(wk)}</span>` : ''}</div>`
+      + `  <button type="button" class="hm-dp-close" data-hm-dp-close aria-label="${esc(hmT(lang, 'close'))}">×</button>`
       + `</div>`
       + `<div class="hm-dp-hero"><span class="hm-dp-total">${esc(fmtTok(t))}</span><span class="hm-dp-sub">${esc(subParts.join(' · '))}</span></div>`
       + `<div class="hm-dp-bar">${t > 0 ? `<span class="hm-dp-seg-in" style="width:${(i / sum * 100).toFixed(1)}%"></span><span class="hm-dp-seg-ca" style="width:${(c / sum * 100).toFixed(1)}%"></span><span class="hm-dp-seg-out" style="width:${(o / sum * 100).toFixed(1)}%"></span>` : ''}</div>`
       + `<div class="hm-dp-grid">`
-      + `  <div class="hm-dp-cell"><span class="hm-dp-k">输入 Input</span><span class="hm-dp-v">${esc(fmtTok(i))}</span></div>`
-      + `  <div class="hm-dp-cell"><span class="hm-dp-k">缓存 Cache</span><span class="hm-dp-v">${esc(cacheText)}</span></div>`
-      + `  <div class="hm-dp-cell"><span class="hm-dp-k">输出 Output</span><span class="hm-dp-v">${esc(outText)}</span></div>`
-      + `  <div class="hm-dp-cell"><span class="hm-dp-k">估算费用</span><span class="hm-dp-v">${esc(costLabel)}</span></div>`
+      + `  <div class="hm-dp-cell"><span class="hm-dp-k">${esc(hmT(lang, 'dpInput'))}</span><span class="hm-dp-v">${esc(fmtTok(i))}</span></div>`
+      + `  <div class="hm-dp-cell"><span class="hm-dp-k">${esc(hmT(lang, 'dpCache'))}</span><span class="hm-dp-v">${esc(cacheText)}</span></div>`
+      + `  <div class="hm-dp-cell"><span class="hm-dp-k">${esc(hmT(lang, 'dpOutput'))}</span><span class="hm-dp-v">${esc(outText)}</span></div>`
+      + `  <div class="hm-dp-cell"><span class="hm-dp-k">${esc(hmT(lang, 'dpEstCost'))}</span><span class="hm-dp-v">${esc(costLabel)}</span></div>`
       + `</div>`;
   }
 
-  function bindDayPopover(root, containerEl, cells, attrName, palette, onHover) {
+  function bindDayPopover(root, containerEl, cells, attrName, palette, onHover, lang = 'zh-CN') {
     const pop = root.querySelector('[data-hm-day-pop]');
     const tip = root.querySelector('[data-hm-hover-tip]');
     if (!pop || !containerEl) return;
@@ -642,11 +1054,12 @@ export function createHeatmapRenderer() {
       raiseHostZ(20);
       const dotColor = palette[Math.max(0, Math.min(palette.length - 1, day.l || 0))] || palette[0];
       const convCount = Math.max(0, Number(day.n) || 0);
+      const convText = fmtCountUnit(convCount, 'convsUnit', lang);
       tip.innerHTML = `<span class="hm-ht-dot" style="background:${dotColor}"></span>`
         + `<span>${esc(day.d)}</span>`
         + `<span class="hm-ht-sep">·</span>`
         + `<span class="hm-ht-val">${esc(fmtTok(day.t))}</span>`
-        + `<span class="hm-ht-sub">· ${convCount} 会话</span>`;
+        + `<span class="hm-ht-sub">· ${esc(convText)}</span>`;
       tip.hidden = false;
       const cRect = containerEl.getBoundingClientRect();
       const sRect = cell.getBoundingClientRect();
@@ -682,7 +1095,7 @@ export function createHeatmapRenderer() {
       openCell = cell;
       cell.setAttribute('data-selected', 'true');
       raiseHostZ(30);
-      pop.innerHTML = buildDayPopInner(day, palette);
+      pop.innerHTML = buildDayPopInner(day, palette, lang);
       pop.hidden = false;
 
       const cRect = containerEl.getBoundingClientRect();
@@ -773,7 +1186,7 @@ export function createHeatmapRenderer() {
     return bucket?.activity?.peakDay || days.find(d => !d.f) || null;
   }
 
-  function buildHeatmapSvg(weeks52, theme, dark, compact = false, paletteOverride = null) {
+  function buildHeatmapSvg(weeks52, theme, dark, compact = false, paletteOverride = null, lang = 'zh-CN') {
     const days = weeks52?.days || [];
     if (!days.length) return '';
     const palette = paletteOverride || buildDynamicPalette(dark ? theme.dark : theme.light, weeks52?.scale?.levels);
@@ -822,10 +1235,10 @@ export function createHeatmapRenderer() {
       );
     }
 
-    return `<svg viewBox="0 0 ${width.toFixed(1)} ${height.toFixed(1)}" class="hm-svg" role="img" aria-label="52 周活跃热力图">${monthLabels.join('')}${rowLabels}${rects.join('')}</svg>`;
+    return `<svg viewBox="0 0 ${width.toFixed(1)} ${height.toFixed(1)}" class="hm-svg" role="img" aria-label="${esc(hmT(lang, 'chart52w'))}">${monthLabels.join('')}${rowLabels}${rects.join('')}</svg>`;
   }
 
-  function buildHomeGridSvg(cells, theme, dark, scale = null, paletteOverride = null) {
+  function buildHomeGridSvg(cells, theme, dark, scale = null, paletteOverride = null, lang = 'zh-CN') {
     const list = Array.isArray(cells) ? cells : [];
     if (!list.length) return '';
     const palette = paletteOverride || buildDynamicPalette(dark ? theme.dark : theme.light, scale?.levels);
@@ -849,12 +1262,12 @@ export function createHeatmapRenderer() {
         `<rect class="hm-cell" data-home-idx="${idx}" x="${x}" y="${y}" width="${cell}" height="${cell}" rx="4" fill="${fill}" stroke="${stroke}" stroke-width="0.6" />`,
       );
     }
-    return `<svg viewBox="0 0 ${width} ${height}" class="hm-home-svg" role="img" aria-label="Insights 活跃矩阵">${rects.join('')}</svg>`;
+    return `<svg viewBox="0 0 ${width} ${height}" class="hm-home-svg" role="img" aria-label="${esc(hmT(lang, 'homeAria'))}">${rects.join('')}</svg>`;
   }
 
-  function build14DaySvg(last14Days, theme, dark) {
+  function build14DaySvg(last14Days, theme, dark, lang = 'zh-CN') {
     const items = Array.isArray(last14Days) ? last14Days : [];
-    if (!items.length) return '<div class="hm-empty">暂无近 14 天数据</div>';
+    if (!items.length) return `<div class="hm-empty">${esc(hmT(lang, 'chart14dEmpty'))}</div>`;
     const W = 420;
     const H = 138;
     const padL = 6;
@@ -896,9 +1309,9 @@ export function createHeatmapRenderer() {
       + `</svg>`;
   }
 
-  function buildMonthlySvg(monthly, theme, dark) {
+  function buildMonthlySvg(monthly, theme, dark, lang = 'zh-CN') {
     const items = Array.isArray(monthly) ? monthly : [];
-    if (!items.length) return '<div class="hm-empty">暂无月度趋势数据</div>';
+    if (!items.length) return `<div class="hm-empty">${esc(hmT(lang, 'chartMonthlyEmpty'))}</div>`;
     const W = 420;
     const H = 138;
     const padL = 6;
@@ -946,6 +1359,7 @@ export function createHeatmapRenderer() {
   }
 
   function buildFullHtml(data, { source = 'all', themeName = loadSavedTheme(), dark = detectDarkMode(), showClose = true, prefs = null, optOpen = false, hasOpticalControl = false, updateStatus = null, updOpen = false, hasUpdateControl = false } = {}) {
+    const lang = resolveHmLang(prefs);
     const theme = THEMES[themeName] || THEMES[DEFAULT_THEME];
     const activeSource = ['all', 'app', 'ide', 'cli'].includes(source) ? source : 'all';
     const bucket = data?.sources?.[activeSource] || data?.sources?.all;
@@ -1146,7 +1560,7 @@ export function createHeatmapRenderer() {
           position: absolute;
           top: calc(100% + 8px);
           right: 0;
-          width: 288px;
+          width: 304px;
           padding: 12px 14px;
           border-radius: 14px;
           background: var(--glass, ${dark ? 'rgba(20, 23, 33, 0.94)' : 'rgba(255, 255, 255, 0.94)'});
@@ -1166,7 +1580,7 @@ export function createHeatmapRenderer() {
           pointer-events: none;
           transition: opacity 180ms cubic-bezier(0.22, 1, 0.36, 1), transform 220ms cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 220ms;
         }
-        .hm-upd-pop { width: 312px; }
+        .hm-upd-pop { width: 324px; }
         .hm-opt-pop[data-open="true"], .hm-upd-pop[data-open="true"] {
           opacity: 1;
           transform: translateY(0) scale(1);
@@ -1412,7 +1826,7 @@ ${getDayPopCss(accent, dark)}
       </style>`;
 
     const sources = [
-      ['all', '全部'],
+      ['all', hmT(lang, 'sourceAll')],
       ['app', 'App'],
       ['ide', 'IDE'],
       ['cli', 'CLI'],
@@ -1423,71 +1837,81 @@ ${getDayPopCss(accent, dark)}
     const pLight = prefs?.opticalLightTheme || 'crystal';
     const pDark = prefs?.opticalDarkTheme || 'obsidian';
     const optPanel = hasOpticalControl ? `<div class="hm-opt-wrap">`
-      + `<button type="button" class="hm-btn" data-hm-action="optical-toggle" aria-expanded="${optOpen ? 'true' : 'false'}">外观</button>`
+      + `<button type="button" class="hm-btn" data-hm-action="optical-toggle" aria-expanded="${optOpen ? 'true' : 'false'}">${esc(hmT(lang, 'appearance'))}</button>`
       + `<div class="hm-opt-pop" data-open="${optOpen ? 'true' : 'false'}" aria-hidden="${optOpen ? 'false' : 'true'}">`
-      + `  <div class="hm-opt-row"><span class="hm-opt-lbl">浅色配色</span><span class="hm-opt-picks">`
-      + `    <button type="button" class="hm-opt-pick" data-opt-key="opticalLightTheme" data-opt-val="crystal" title="Frost" data-active="${pLight === 'crystal'}">白昼</button>`
-      + `    <button type="button" class="hm-opt-pick" data-opt-key="opticalLightTheme" data-opt-val="alabaster" title="Ivory" data-active="${pLight === 'alabaster'}">晨光</button>`
-      + `    <button type="button" class="hm-opt-pick" data-opt-key="opticalLightTheme" data-opt-val="native" data-active="${pLight === 'native'}">原生</button>`
+      + `  <div class="hm-opt-row"><span class="hm-opt-lbl">${esc(hmT(lang, 'langLabel'))}</span><span class="hm-opt-picks">`
+      + `    <button type="button" class="hm-opt-pick" data-opt-lang="zh-CN" data-active="${lang === 'zh-CN'}">简中</button>`
+      + `    <button type="button" class="hm-opt-pick" data-opt-lang="zh-TW" data-active="${lang === 'zh-TW'}">繁中</button>`
+      + `    <button type="button" class="hm-opt-pick" data-opt-lang="en" data-active="${lang === 'en'}">EN</button>`
+      + `    <button type="button" class="hm-opt-pick" data-opt-lang="ja" data-active="${lang === 'ja'}">日本語</button>`
       + `  </span></div>`
-      + `  <div class="hm-opt-row"><span class="hm-opt-lbl">深色配色</span><span class="hm-opt-picks">`
-      + `    <button type="button" class="hm-opt-pick" data-opt-key="opticalDarkTheme" data-opt-val="obsidian" title="Noir" data-active="${pDark === 'obsidian'}">午夜</button>`
-      + `    <button type="button" class="hm-opt-pick" data-opt-key="opticalDarkTheme" data-opt-val="warm" title="Graphite" data-active="${pDark === 'warm'}">暮色</button>`
-      + `    <button type="button" class="hm-opt-pick" data-opt-key="opticalDarkTheme" data-opt-val="native" data-active="${pDark === 'native'}">原生</button>`
+      + `  <div class="hm-opt-row"><span class="hm-opt-lbl">${esc(hmT(lang, 'lightPalette'))}</span><span class="hm-opt-picks">`
+      + `    <button type="button" class="hm-opt-pick" data-opt-key="opticalLightTheme" data-opt-val="crystal" title="Frost" data-active="${pLight === 'crystal'}">${esc(hmT(lang, 'optFrost'))}</button>`
+      + `    <button type="button" class="hm-opt-pick" data-opt-key="opticalLightTheme" data-opt-val="alabaster" title="Ivory" data-active="${pLight === 'alabaster'}">${esc(hmT(lang, 'optIvory'))}</button>`
+      + `    <button type="button" class="hm-opt-pick" data-opt-key="opticalLightTheme" data-opt-val="native" data-active="${pLight === 'native'}">${esc(hmT(lang, 'optNative'))}</button>`
+      + `  </span></div>`
+      + `  <div class="hm-opt-row"><span class="hm-opt-lbl">${esc(hmT(lang, 'darkPalette'))}</span><span class="hm-opt-picks">`
+      + `    <button type="button" class="hm-opt-pick" data-opt-key="opticalDarkTheme" data-opt-val="obsidian" title="Noir" data-active="${pDark === 'obsidian'}">${esc(hmT(lang, 'optNoir'))}</button>`
+      + `    <button type="button" class="hm-opt-pick" data-opt-key="opticalDarkTheme" data-opt-val="warm" title="Graphite" data-active="${pDark === 'warm'}">${esc(hmT(lang, 'optGraphite'))}</button>`
+      + `    <button type="button" class="hm-opt-pick" data-opt-key="opticalDarkTheme" data-opt-val="native" data-active="${pDark === 'native'}">${esc(hmT(lang, 'optNative'))}</button>`
       + `  </span></div>`
       + `  <div class="hm-opt-checks">`
-      + `    <label class="hm-opt-chk"><input type="checkbox" data-opt-chk="opticalPrismRim"${prefs?.opticalPrismRim !== false ? ' checked' : ''}/><span>棱镜流光</span></label>`
-      + `    <label class="hm-opt-chk"><input type="checkbox" data-opt-chk="opticalGlass"${prefs?.opticalGlass !== false ? ' checked' : ''}/><span>玻璃质感</span></label>`
-      + `    <label class="hm-opt-chk"><input type="checkbox" data-opt-chk="opticalMotion"${prefs?.opticalMotion !== false ? ' checked' : ''}/><span>渐现动效</span></label>`
-      + `    <label class="hm-opt-chk"><input type="checkbox" data-opt-chk="opticalCodeTools"${prefs?.opticalCodeTools !== false ? ' checked' : ''}/><span>代码折叠</span></label>`
+      + `    <label class="hm-opt-chk"><input type="checkbox" data-opt-chk="opticalPrismRim"${prefs?.opticalPrismRim !== false ? ' checked' : ''}/><span>${esc(hmT(lang, 'optPrismRim'))}</span></label>`
+      + `    <label class="hm-opt-chk"><input type="checkbox" data-opt-chk="opticalGlass"${prefs?.opticalGlass !== false ? ' checked' : ''}/><span>${esc(hmT(lang, 'optGlass'))}</span></label>`
+      + `    <label class="hm-opt-chk"><input type="checkbox" data-opt-chk="opticalMotion"${prefs?.opticalMotion !== false ? ' checked' : ''}/><span>${esc(hmT(lang, 'optMotion'))}</span></label>`
+      + `    <label class="hm-opt-chk"><input type="checkbox" data-opt-chk="opticalCodeTools"${prefs?.opticalCodeTools !== false ? ' checked' : ''}/><span>${esc(hmT(lang, 'optCodeTools'))}</span></label>`
       + `  </div>`
-      + `  <div class="hm-opt-row" style="justify-content:flex-end"><button type="button" class="hm-btn" data-hm-action="optical-reset" style="padding:3px 9px;font-size:11.5px">还原原生</button></div>`
+      + `  <div class="hm-opt-row" style="justify-content:flex-end"><button type="button" class="hm-btn" data-hm-action="optical-reset" style="padding:3px 9px;font-size:11.5px">${esc(hmT(lang, 'optReset'))}</button></div>`
       + `</div></div>` : '';
 
-    const updPanel = buildUpdatePanelHtml({ updateStatus, prefs, updOpen, hasUpdateControl });
+    const updPanel = buildUpdatePanelHtml({ updateStatus, prefs, updOpen, hasUpdateControl, lang });
+
+    const daysUnit = hmT(lang, 'kpiDaysUnit');
+    const activeDaysVal = (lang === 'en' || lang === 'ja') ? `${activity.activeDays || 0}${daysUnit}` : `${activity.activeDays || 0} ${daysUnit}`;
+    const peakDaySuffix = activity.peakDay ? ` · ${activity.peakDay.d.slice(5)}` : '';
 
     return `${style}<div class="hm-wrap"><div class="hm-container">`
       + `<div class="hm-topbar">`
-      + `  <div class="hm-brand"><span class="hm-logo">${iconSvg}</span><span class="hm-title">Insights</span><span class="hm-badge">只读 · 本地会话日志</span></div>`
+      + `  <div class="hm-brand"><span class="hm-logo">${iconSvg}</span><span class="hm-title">Insights</span><span class="hm-badge">${esc(hmT(lang, 'readonlyBadge'))}</span></div>`
       + `  <div class="hm-actions">`
       + `    <span class="hm-live-pill"><span class="hm-live-dot"></span>Live</span>`
       + updPanel
       + optPanel
-      + `    <button type="button" class="hm-btn" data-hm-action="refresh">刷新</button>`
-      + (showClose ? `<button type="button" class="hm-btn" data-hm-action="close">关闭</button>` : '')
+      + `    <button type="button" class="hm-btn" data-hm-action="refresh">${esc(hmT(lang, 'refresh'))}</button>`
+      + (showClose ? `<button type="button" class="hm-btn" data-hm-action="close">${esc(hmT(lang, 'close'))}</button>` : '')
       + `  </div>`
       + `</div>`
       + `<div class="hm-controls">`
       + `  <div class="hm-seg" role="tablist">${sources.map(([k, lbl]) => {
           const cnt = data?.counts?.[k] ?? 0;
-          return `<button type="button" class="hm-src-btn" data-hm-src="${k}" data-active="${activeSource === k}">${lbl}${cnt > 0 && k !== 'all' ? ` (${cnt})` : ''}</button>`;
+          return `<button type="button" class="hm-src-btn" data-hm-src="${k}" data-active="${activeSource === k}">${esc(lbl)}${cnt > 0 && k !== 'all' ? ` (${cnt})` : ''}</button>`;
         }).join('')}</div>`
-      + `  <div class="hm-palettes"><span>配色</span>${Object.entries(THEMES).map(([k, th]) => `<button type="button" class="hm-swatch" data-hm-theme="${k}" data-active="${themeName === k}" style="background:${th.swatch}" title="${esc(th.label)}"></button>`).join('')}</div>`
+      + `  <div class="hm-palettes"><span>${esc(hmT(lang, 'palette'))}</span>${Object.entries(THEMES).map(([k, th]) => `<button type="button" class="hm-swatch" data-hm-theme="${k}" data-active="${themeName === k}" style="background:${th.swatch}" title="${esc(th.label)}"></button>`).join('')}</div>`
       + `</div>`
       + `<div class="hm-kpi-grid">`
-      + `  <div class="hm-card hm-kpi-hover" tabindex="0"><div class="hm-kpi-label">累计总 Token</div><div class="hm-kpi-val">${esc(fmtTok(totals.totalTokens))}</div><div class="hm-kpi-sub">In ${esc(fmtTok(totals.inputTokens))} · Cache ${esc(fmtTok(totals.cacheTokens))} · Out ${esc(fmtTok(totals.outputTokens))}</div>`
+      + `  <div class="hm-card hm-kpi-hover" tabindex="0"><div class="hm-kpi-label">${esc(hmT(lang, 'kpiTotalTokens'))}</div><div class="hm-kpi-val">${esc(fmtTok(totals.totalTokens))}</div><div class="hm-kpi-sub">In ${esc(fmtTok(totals.inputTokens))} · Cache ${esc(fmtTok(totals.cacheTokens))} · Out ${esc(fmtTok(totals.outputTokens))}</div>`
       + `    <div class="hm-kpi-pop" role="tooltip">`
-      + `      <div class="hm-kpi-pop-row"><span>总计</span><strong>${esc(fmtTok(totals.totalTokens))}</strong></div>`
-      + `      <div class="hm-kpi-pop-row"><span>非缓存输入 (In)</span><strong>${esc(fmtTok(totals.inputTokens))}</strong></div>`
-      + `      <div class="hm-kpi-pop-row"><span>缓存读取 (Cache)</span><strong>${esc(fmtTok(totals.cacheTokens))} (${(Number(totals.cacheHitRate) || 0).toFixed(1)}%)</strong></div>`
-      + `      <div class="hm-kpi-pop-row"><span>输出 (Out)</span><strong>${esc(fmtTok(totals.outputTokens))}</strong></div>`
-      + ((totals.thinkingTokens || 0) > 0 ? `<div class="hm-kpi-pop-row"><span>思考 (Think)</span><strong>${esc(fmtTok(totals.thinkingTokens))}</strong></div>` : '')
-      + ((totals.totalCostUsd || 0) > 0 ? `<div class="hm-kpi-pop-row"><span>估算费用</span><strong>${esc(fmtUsd(totals.totalCostUsd))}</strong></div>` : '')
+      + `      <div class="hm-kpi-pop-row"><span>${esc(hmT(lang, 'kpiTotal'))}</span><strong>${esc(fmtTok(totals.totalTokens))}</strong></div>`
+      + `      <div class="hm-kpi-pop-row"><span>${esc(hmT(lang, 'kpiUncachedIn'))}</span><strong>${esc(fmtTok(totals.inputTokens))}</strong></div>`
+      + `      <div class="hm-kpi-pop-row"><span>${esc(hmT(lang, 'kpiCacheRead'))}</span><strong>${esc(fmtTok(totals.cacheTokens))} (${(Number(totals.cacheHitRate) || 0).toFixed(1)}%)</strong></div>`
+      + `      <div class="hm-kpi-pop-row"><span>${esc(hmT(lang, 'kpiOutput'))}</span><strong>${esc(fmtTok(totals.outputTokens))}</strong></div>`
+      + ((totals.thinkingTokens || 0) > 0 ? `<div class="hm-kpi-pop-row"><span>${esc(hmT(lang, 'kpiThinking'))}</span><strong>${esc(fmtTok(totals.thinkingTokens))}</strong></div>` : '')
+      + ((totals.totalCostUsd || 0) > 0 ? `<div class="hm-kpi-pop-row"><span>${esc(hmT(lang, 'kpiEstCost'))}</span><strong>${esc(fmtUsd(totals.totalCostUsd))}</strong></div>` : '')
       + `    </div>`
       + `  </div>`
-      + `  <div class="hm-card" title="最长连续 ${activity.longestStreak || 0} 天"><div class="hm-kpi-label">活跃天数 / 连续</div><div class="hm-kpi-val">${activity.activeDays || 0} 天</div><div class="hm-kpi-sub">当前连续 ${activity.currentStreak || 0} 天 · 最长 ${activity.longestStreak || 0} 天</div></div>`
-      + `  <div class="hm-card"><div class="hm-kpi-label">总会话数</div><div class="hm-kpi-val">${totals.conversationCount || 0}</div><div class="hm-kpi-sub">主会话 ${totals.mainCount || 0} · 子智能体 ${totals.subagentCount || 0}</div></div>`
-      + `  <div class="hm-card"><div class="hm-kpi-label">单日最高</div><div class="hm-kpi-val">${esc(activity.peakDay ? fmtTok(activity.peakDay.t) : '0')}</div><div class="hm-kpi-sub">全局缓存命中 ${(Number(totals.cacheHitRate) || 0).toFixed(1)}%${activity.peakDay ? ` · ${activity.peakDay.d.slice(5)}` : ''}</div></div>`
+      + `  <div class="hm-card" title="${esc(hmFmt(lang, 'kpiLongestTitle', { max: activity.longestStreak || 0 }))}"><div class="hm-kpi-label">${esc(hmT(lang, 'kpiActiveStreak'))}</div><div class="hm-kpi-val">${esc(activeDaysVal)}</div><div class="hm-kpi-sub">${esc(hmFmt(lang, 'kpiCurStreak', { cur: activity.currentStreak || 0, max: activity.longestStreak || 0 }))}</div></div>`
+      + `  <div class="hm-card"><div class="hm-kpi-label">${esc(hmT(lang, 'kpiTotalConvs'))}</div><div class="hm-kpi-val">${totals.conversationCount || 0}</div><div class="hm-kpi-sub">${esc(hmFmt(lang, 'kpiMainConvs', { main: totals.mainCount || 0, sub: totals.subagentCount || 0 }))}</div></div>`
+      + `  <div class="hm-card"><div class="hm-kpi-label">${esc(hmT(lang, 'kpiPeakDay'))}</div><div class="hm-kpi-val">${esc(activity.peakDay ? fmtTok(activity.peakDay.t) : '0')}</div><div class="hm-kpi-sub">${esc(hmFmt(lang, 'kpiCacheHit', { pct: (Number(totals.cacheHitRate) || 0).toFixed(1), day: peakDaySuffix }))}</div></div>`
       + `</div>`
       + `<div class="hm-card" data-hm-full-card style="position:relative">`
-      + `  <div class="hm-card-head"><span class="hm-card-title">52 周活跃热力图</span>${buildLegendHtml(palette, bucket?.weeks52?.scale)}</div>`
-      + (bucket ? buildHeatmapSvg(bucket.weeks52, theme, dark, false, palette) : '<div class="hm-empty">正在读取本地会话数据库…</div>')
+      + `  <div class="hm-card-head"><span class="hm-card-title">${esc(hmT(lang, 'chart52w'))}</span>${buildLegendHtml(palette, bucket?.weeks52?.scale, lang)}</div>`
+      + (bucket ? buildHeatmapSvg(bucket.weeks52, theme, dark, false, palette, lang) : `<div class="hm-empty">${esc(hmT(lang, 'chartLoading'))}</div>`)
       + `  <div class="hm-hover-tip" data-hm-hover-tip hidden></div>`
       + `  <div class="hm-day-pop" data-hm-day-pop hidden></div>`
       + `</div>`
       + `<div class="hm-charts-grid">`
-      + `  <div class="hm-card"><div class="hm-card-head"><span class="hm-card-title">近 14 天用量</span><span class="hm-card-meta" data-hm-meta14>${esc(bucket?.last14Days?.length ? `今日 ${fmtTok(bucket.last14Days.at(-1).t)}` : '')}</span></div>${bucket ? build14DaySvg(bucket.last14Days, theme, dark) : ''}</div>`
-      + `  <div class="hm-card"><div class="hm-card-head"><span class="hm-card-title">月度趋势与累计曲线</span><span class="hm-card-meta" data-hm-meta-mon>${esc(bucket?.monthly?.length ? `累计 ${fmtTok(bucket.monthly.at(-1).cum)}` : '')}</span></div>${bucket ? buildMonthlySvg(bucket.monthly, theme, dark) : ''}</div>`
+      + `  <div class="hm-card"><div class="hm-card-head"><span class="hm-card-title">${esc(hmT(lang, 'chart14d'))}</span><span class="hm-card-meta" data-hm-meta14>${esc(bucket?.last14Days?.length ? hmFmt(lang, 'chart14dToday', { val: fmtTok(bucket.last14Days.at(-1).t) }) : '')}</span></div>${bucket ? build14DaySvg(bucket.last14Days, theme, dark, lang) : ''}</div>`
+      + `  <div class="hm-card"><div class="hm-card-head"><span class="hm-card-title">${esc(hmT(lang, 'chartMonthly'))}</span><span class="hm-card-meta" data-hm-meta-mon>${esc(bucket?.monthly?.length ? hmFmt(lang, 'chartMonthlyCum', { val: fmtTok(bucket.monthly.at(-1).cum) }) : '')}</span></div>${bucket ? buildMonthlySvg(bucket.monthly, theme, dark, lang) : ''}</div>`
       + `</div>`
       + `</div></div>`;
   }
@@ -1500,15 +1924,15 @@ ${getDayPopCss(accent, dark)}
     return pad.concat(nonFuture);
   }
 
-  function formatHomeStatsText(data, collapsed) {
-    if (!data) return '加载中…';
+  function formatHomeStatsText(data, collapsed, lang = 'zh-CN') {
+    if (!data) return hmT(lang, 'homeLoading');
     const bucket = data?.sources?.all;
     const totals = bucket?.totals || { totalTokens: 0 };
     const activity = bucket?.activity || { currentStreak: 0 };
-    return `${collapsed ? '近 14 天' : '近 12 周'} · 累计 ${fmtTok(totals.totalTokens)} · 连续 ${activity.currentStreak || 0} 天`;
+    return `${collapsed ? hmT(lang, 'homeLast14') : hmT(lang, 'homeLast12w')} · ${hmFmt(lang, 'homeCum', { val: fmtTok(totals.totalTokens) })} · ${hmFmt(lang, 'homeStreak', { n: activity.currentStreak || 0 })}`;
   }
 
-  function buildHomeBodyHtml(bucket, { themeName, dark, collapsed }) {
+  function buildHomeBodyHtml(bucket, { themeName, dark, collapsed, lang = 'zh-CN' }) {
     const theme = THEMES[themeName] || THEMES[DEFAULT_THEME];
     const scale = bucket?.weeks52?.scale;
     const palette = buildDynamicPalette(dark ? theme.dark : theme.light, scale?.levels);
@@ -1519,24 +1943,25 @@ ${getDayPopCss(accent, dark)}
 
     return collapsed
       ? `<div class="hm-home-collapsed">`
-        + buildHomeGridSvg(cells, theme, dark, scale, palette)
-        + `  <div class="hm-home-foot"><span class="hm-home-detail" data-hm-home-detail>${esc(formatCompactDay(defaultDay))}</span>${buildLegendHtml(palette, scale)}</div>`
+        + buildHomeGridSvg(cells, theme, dark, scale, palette, lang)
+        + `  <div class="hm-home-foot"><span class="hm-home-detail" data-hm-home-detail>${esc(formatCompactDay(defaultDay, lang))}</span>${buildLegendHtml(palette, scale, lang)}</div>`
         + `</div>`
       : `<div class="hm-home-expanded">`
-        + `  <div>${buildHomeGridSvg(cells, theme, dark, scale, palette)}</div>`
+        + `  <div>${buildHomeGridSvg(cells, theme, dark, scale, palette, lang)}</div>`
         + `  <div class="hm-home-side">`
         + `    <div class="hm-home-kpis">`
-        + `      <div class="hm-home-kpi"><div class="hm-home-kpi-l">累计 Token</div><div class="hm-home-kpi-v">${esc(fmtTok(totals.totalTokens))}</div></div>`
-        + `      <div class="hm-home-kpi"><div class="hm-home-kpi-l">活跃 / 连续</div><div class="hm-home-kpi-v">${activity.activeDays || 0} 天 · ${activity.currentStreak || 0} 连</div></div>`
-        + `      <div class="hm-home-kpi"><div class="hm-home-kpi-l">单日峰值</div><div class="hm-home-kpi-v">${esc(activity.peakDay ? fmtTok(activity.peakDay.t) : '0')}</div></div>`
-        + `      <div class="hm-home-kpi"><div class="hm-home-kpi-l">缓存命中</div><div class="hm-home-kpi-v">${(Number(totals.cacheHitRate) || 0).toFixed(1)}%</div></div>`
+        + `      <div class="hm-home-kpi"><div class="hm-home-kpi-l">${esc(hmT(lang, 'homeKpiTotal'))}</div><div class="hm-home-kpi-v">${esc(fmtTok(totals.totalTokens))}</div></div>`
+        + `      <div class="hm-home-kpi"><div class="hm-home-kpi-l">${esc(hmT(lang, 'homeKpiActive'))}</div><div class="hm-home-kpi-v">${esc(hmFmt(lang, 'homeKpiActiveVal', { days: activity.activeDays || 0, cur: activity.currentStreak || 0 }))}</div></div>`
+        + `      <div class="hm-home-kpi"><div class="hm-home-kpi-l">${esc(hmT(lang, 'homeKpiPeak'))}</div><div class="hm-home-kpi-v">${esc(activity.peakDay ? fmtTok(activity.peakDay.t) : '0')}</div></div>`
+        + `      <div class="hm-home-kpi"><div class="hm-home-kpi-l">${esc(hmT(lang, 'homeKpiCache'))}</div><div class="hm-home-kpi-v">${(Number(totals.cacheHitRate) || 0).toFixed(1)}%</div></div>`
         + `    </div>`
-        + `    <div class="hm-home-foot"><span class="hm-home-detail" data-hm-home-detail>${esc(formatCompactDay(defaultDay))}</span>${buildLegendHtml(palette, scale)}</div>`
+        + `    <div class="hm-home-foot"><span class="hm-home-detail" data-hm-home-detail>${esc(formatCompactDay(defaultDay, lang))}</span>${buildLegendHtml(palette, scale, lang)}</div>`
         + `  </div>`
         + `</div>`;
   }
 
-  function buildHomeHtml(data, { themeName = loadSavedTheme(), dark = detectDarkMode(), collapsed = loadHomeCollapsed(), updateStatus = null } = {}) {
+  function buildHomeHtml(data, { themeName = loadSavedTheme(), dark = detectDarkMode(), collapsed = loadHomeCollapsed(), updateStatus = null, prefs = null } = {}) {
+    const lang = resolveHmLang(prefs);
     const theme = THEMES[themeName] || THEMES[DEFAULT_THEME];
     const accent = dark ? theme.accentDark : theme.accent;
     const bucket = data?.sources?.all;
@@ -1774,18 +2199,18 @@ ${getDayPopCss(accent, dark)}
     const iconSvg = '<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1.4" opacity="0.45"/><rect x="9" y="1.5" width="5.5" height="5.5" rx="1.4" opacity="0.75"/><rect x="1.5" y="9" width="5.5" height="5.5" rx="1.4" opacity="0.75"/><rect x="9" y="9" width="5.5" height="5.5" rx="1.4"/></svg>';
     const arrowSvg = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg>';
 
-    const bodyHtml = buildHomeBodyHtml(bucket, { themeName, dark, collapsed });
+    const bodyHtml = buildHomeBodyHtml(bucket, { themeName, dark, collapsed, lang });
     const updPill = (updateStatus?.updateAvailable && updateStatus?.actionKind === 'upgrade' && updateStatus?.latest?.tag)
-      ? `<button type="button" class="hm-home-upd" data-hm-home="update" title="查看新版本并一键更新">新版本 ${esc(updateStatus.latest.tag)}</button>`
+      ? `<button type="button" class="hm-home-upd" data-hm-home="update" title="${esc(hmT(lang, 'updHomeTitle'))}">${esc(hmFmt(lang, 'updHomePill', { tag: updateStatus.latest.tag }))}</button>`
       : '';
 
     return `${style}<div class="hm-home-card" data-collapsed="${collapsed ? '1' : '0'}">`
       + `<div class="hm-home-head">`
       + `  <div class="hm-home-left">`
-      + `    <button type="button" class="hm-home-open" data-hm-home="open" title="打开 Insights 完整视图"><span class="hm-home-ico">${iconSvg}</span><span class="hm-home-title">Insights</span></button>`
-      + `    <span class="hm-home-stats">${esc(formatHomeStatsText(data, collapsed))}</span>`
+      + `    <button type="button" class="hm-home-open" data-hm-home="open" title="${esc(hmT(lang, 'homeOpenTitle'))}"><span class="hm-home-ico">${iconSvg}</span><span class="hm-home-title">Insights</span></button>`
+      + `    <span class="hm-home-stats">${esc(formatHomeStatsText(data, collapsed, lang))}</span>`
       + `  </div>`
-      + `  <div style="display:inline-flex;align-items:center;gap:6px;flex-shrink:0">${updPill}<button type="button" class="hm-home-arrow" data-hm-home="toggle" title="${collapsed ? '展开近 12 周' : '收起为近 14 天'}" aria-expanded="${!collapsed}">${arrowSvg}</button></div>`
+      + `  <div style="display:inline-flex;align-items:center;gap:6px;flex-shrink:0">${updPill}<button type="button" class="hm-home-arrow" data-hm-home="toggle" title="${esc(collapsed ? hmT(lang, 'homeExpandTitle') : hmT(lang, 'homeCollapseTitle'))}" aria-expanded="${!collapsed}">${arrowSvg}</button></div>`
       + `</div>`
       + `<div class="hm-home-body">${bodyHtml}</div>`
       + `<div class="hm-hover-tip" data-hm-hover-tip hidden></div>`
@@ -1813,9 +2238,10 @@ ${getDayPopCss(accent, dark)}
     const last14 = bucket?.last14Days || [];
     const monthly = bucket?.monthly || [];
     const prefs = callbacks.prefs || null;
+    const lang = resolveHmLang(prefs);
     const hasOpticalControl = typeof callbacks.onUpdatePrefs === 'function';
     const hasUpdateControl = typeof callbacks.onCheckUpdate === 'function' || typeof callbacks.onApplyUpdate === 'function';
-    const prefSig = prefs ? [prefs.opticalLightTheme, prefs.opticalDarkTheme, prefs.opticalPrismRim, prefs.opticalGlass, prefs.opticalMotion, prefs.opticalCodeTools, prefs.updateChannel, prefs.autoCheckUpdates].join(':') : '';
+    const prefSig = prefs ? [prefs.language, prefs.opticalLightTheme, prefs.opticalDarkTheme, prefs.opticalPrismRim, prefs.opticalGlass, prefs.opticalMotion, prefs.opticalCodeTools, prefs.updateChannel, prefs.autoCheckUpdates].join(':') : '';
     const scaleSig = getScaleSignature(bucket?.weeks52?.scale);
     const updSig = getUpdateSignature(callbacks.updateStatus);
     const renderKey = JSON.stringify([data?.generatedAt || 0, state.source, state.theme, dark, callbacks.showClose !== false, hasOpticalControl, hasUpdateControl, prefSig, scaleSig, updSig]);
@@ -1854,15 +2280,16 @@ ${getDayPopCss(accent, dark)}
     const fullCard = root.querySelector('[data-hm-full-card]');
     const themeObj = THEMES[state.theme] || THEMES[DEFAULT_THEME];
     const palette = buildDynamicPalette(dark ? themeObj.dark : themeObj.light, bucket?.weeks52?.scale?.levels);
-    bindDayPopover(root, fullCard, days, 'data-day-idx', palette, null);
+    bindDayPopover(root, fullCard, days, 'data-day-idx', palette, null, lang);
 
     const meta14 = root.querySelector('[data-hm-meta14]');
     for (const bar of root.querySelectorAll('.hm-bar14')) {
       const idx = Number(bar.getAttribute('data-b14-idx'));
       const d = last14[idx];
       if (d && meta14) {
+        const convText = fmtCountUnit(d.n || 0, 'convsUnit', lang);
         bar.addEventListener('mouseenter', () => {
-          meta14.textContent = `${d.label} · ${fmtTok(d.t)} · ${d.n || 0} 会话`;
+          meta14.textContent = `${d.label} · ${fmtTok(d.t)} · ${convText}`;
         });
       }
     }
@@ -1873,7 +2300,7 @@ ${getDayPopCss(accent, dark)}
       const m = monthly[idx];
       if (m && metaMon) {
         node.addEventListener('mouseenter', () => {
-          metaMon.textContent = `${m.m} · 当月 ${fmtTok(m.t)} · 累计 ${fmtTok(m.cum)}`;
+          metaMon.textContent = hmFmt(lang, 'chartMonthlyMonth', { m: m.m, t: fmtTok(m.t), cum: fmtTok(m.cum) });
         });
       }
     }
@@ -1957,6 +2384,12 @@ ${getDayPopCss(accent, dark)}
     root.querySelector('[data-hm-action="update-apply"]')?.addEventListener('click', () => {
       callbacks.onApplyUpdate?.(prefs?.updateChannel || callbacks.updateStatus?.channel || 'stable');
     });
+    for (const btn of root.querySelectorAll('[data-opt-lang]')) {
+      btn.addEventListener('click', () => {
+        const nextLang = btn.getAttribute('data-opt-lang');
+        if (nextLang) callbacks.onUpdatePrefs?.({ language: nextLang, settingsLanguage: nextLang });
+      });
+    }
     for (const btn of root.querySelectorAll('[data-opt-key]')) {
       btn.addEventListener('click', () => {
         const key = btn.getAttribute('data-opt-key');
@@ -1994,17 +2427,19 @@ ${getDayPopCss(accent, dark)}
     const themeName = loadSavedTheme();
     const dark = detectDarkMode();
     let curCollapsed = loadHomeCollapsed();
-    const getHomeKey = (d, collapsedFlag, upd = callbacks.updateStatus) => JSON.stringify([
+    const getHomeKey = (d, collapsedFlag, upd = callbacks.updateStatus, pr = callbacks.prefs) => JSON.stringify([
       d?.generatedAt || 0,
       themeName,
       dark,
       collapsedFlag,
+      resolveHmLang(pr),
       getScaleSignature(d?.sources?.all?.weeks52?.scale),
       getUpdateSignature(upd),
     ]);
-    const renderKey = getHomeKey(data, curCollapsed, callbacks.updateStatus);
+    const lang = resolveHmLang(callbacks.prefs);
+    const renderKey = getHomeKey(data, curCollapsed, callbacks.updateStatus, callbacks.prefs);
     if (root._hmHomeKey === renderKey) return;
-    const shellKey = JSON.stringify([themeName, dark]);
+    const shellKey = JSON.stringify([themeName, dark, lang]);
     const liveCard = root.querySelector('.hm-home-card');
     if (root._hmHomeShellKey === shellKey && root._hmUpdateHomeData && liveCard && liveCard.isConnected !== false) {
       if (root._hmUpdateHomeData(data, curCollapsed, callbacks)) {
@@ -2015,7 +2450,7 @@ ${getDayPopCss(accent, dark)}
     root._hmHomeKey = renderKey;
     root._hmHomeShellKey = shellKey;
 
-    root.innerHTML = buildHomeHtml(data, { themeName, dark, collapsed: curCollapsed, updateStatus: callbacks.updateStatus || null });
+    root.innerHTML = buildHomeHtml(data, { themeName, dark, collapsed: curCollapsed, updateStatus: callbacks.updateStatus || null, prefs: callbacks.prefs || null });
 
     let curData = data;
     let curCallbacks = callbacks;
@@ -2023,11 +2458,12 @@ ${getDayPopCss(accent, dark)}
     const themeObj = THEMES[themeName] || THEMES[DEFAULT_THEME];
     const basePalette = dark ? themeObj.dark : themeObj.light;
     const bindHomeCells = (targetCells, targetBucket) => {
+      const activeLang = resolveHmLang(curCallbacks?.prefs);
       const detailEl = root.querySelector('[data-hm-home-detail]');
       const dynamicPalette = buildDynamicPalette(basePalette, targetBucket?.weeks52?.scale?.levels);
       bindDayPopover(root, card, targetCells, 'data-home-idx', dynamicPalette, (day) => {
-        if (detailEl) detailEl.textContent = formatCompactDay(day);
-      });
+        if (detailEl) detailEl.textContent = formatCompactDay(day, activeLang);
+      }, activeLang);
     };
     bindHomeCells(getHomeCells(curData?.sources?.all, curCollapsed), curData?.sources?.all);
 
@@ -2116,18 +2552,19 @@ ${getDayPopCss(accent, dark)}
       }
     }
     const updateBodyUi = (nextCollapsed) => {
+      const activeLang = resolveHmLang(curCallbacks?.prefs);
       const bodyEl = root.querySelector('.hm-home-body');
       const statsEl = root.querySelector('.hm-home-stats');
       const toggleBtn = root.querySelector('[data-hm-home="toggle"]');
       const nextBucket = curData?.sources?.all;
       if (!card || !bodyEl) return false;
       card.setAttribute('data-collapsed', nextCollapsed ? '1' : '0');
-      if (statsEl) statsEl.textContent = formatHomeStatsText(curData, nextCollapsed);
+      if (statsEl) statsEl.textContent = formatHomeStatsText(curData, nextCollapsed, activeLang);
       if (toggleBtn) {
-        toggleBtn.title = nextCollapsed ? '展开近 12 周' : '收起为近 14 天';
+        toggleBtn.title = nextCollapsed ? hmT(activeLang, 'homeExpandTitle') : hmT(activeLang, 'homeCollapseTitle');
         toggleBtn.setAttribute('aria-expanded', String(!nextCollapsed));
       }
-      bodyEl.innerHTML = buildHomeBodyHtml(nextBucket, { themeName, dark, collapsed: nextCollapsed });
+      bodyEl.innerHTML = buildHomeBodyHtml(nextBucket, { themeName, dark, collapsed: nextCollapsed, lang: activeLang });
       bindHomeCells(getHomeCells(nextBucket, nextCollapsed), nextBucket);
       const updSt = curCallbacks?.updateStatus;
       const showUpd = Boolean(updSt?.updateAvailable && updSt?.actionKind === 'upgrade' && updSt?.latest?.tag);
@@ -2138,11 +2575,14 @@ ${getDayPopCss(accent, dark)}
           updBtn.type = 'button';
           updBtn.className = 'hm-home-upd';
           updBtn.setAttribute('data-hm-home', 'update');
-          updBtn.title = '查看新版本并一键更新';
+          updBtn.title = hmT(activeLang, 'updHomeTitle');
           updBtn.addEventListener('click', () => curCallbacks?.onOpenUpdate?.());
           toggleBtn.parentElement.insertBefore(updBtn, toggleBtn);
         }
-        if (updBtn) updBtn.textContent = `新版本 ${updSt.latest.tag}`;
+        if (updBtn) {
+          updBtn.title = hmT(activeLang, 'updHomeTitle');
+          updBtn.textContent = hmFmt(activeLang, 'updHomePill', { tag: updSt.latest.tag });
+        }
       } else if (updBtn) {
         updBtn.remove?.();
       }
@@ -2171,7 +2611,7 @@ ${getDayPopCss(accent, dark)}
 
       curCollapsed = !curCollapsed;
       saveHomeCollapsed(curCollapsed);
-      root._hmHomeKey = getHomeKey(curData, curCollapsed, curCallbacks?.updateStatus);
+      root._hmHomeKey = getHomeKey(curData, curCollapsed, curCallbacks?.updateStatus, curCallbacks?.prefs);
 
       if (!updateBodyUi(curCollapsed)) {
         root._hmHomeKey = '';
@@ -2257,8 +2697,9 @@ ${getDayPopCss(accent, dark)}
   }
 
   return {
-    version: 27,
+    version: 29,
     SUPPORTED_HM_LOCALES,
+    HM_I18N,
     resolveHmLang,
     hmT,
     THEMES,
@@ -2274,4 +2715,4 @@ ${getDayPopCss(accent, dark)}
   };
 }
 
-export const getHeatmapRendererScript = () => `if (globalThis.__agyPrismHeatmapUI?.version !== 27) globalThis.__agyPrismHeatmapUI = (${createHeatmapRenderer.toString()})();`;
+export const getHeatmapRendererScript = () => `if (globalThis.__agyPrismHeatmapUI?.version !== 29) globalThis.__agyPrismHeatmapUI = (${createHeatmapRenderer.toString()})();`;

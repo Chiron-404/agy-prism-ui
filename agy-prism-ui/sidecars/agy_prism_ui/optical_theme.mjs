@@ -680,11 +680,19 @@ html[data-agy-opt-code="1"] pre[data-agy-opt-folded="1"] {
     for (const pre of document.querySelectorAll('pre[data-agy-opt-code-bound]')) pre.removeAttribute('data-agy-opt-code-bound');
   }
 
+  function formatFoldLabel(folded, lines, lang = 'zh-CN') {
+    if (lang === 'en') return `${folded ? 'Expand' : 'Fold'} · ${lines} lines`;
+    if (lang === 'ja') return `${folded ? '展開' : '折りたたむ'} · ${lines} 行`;
+    if (lang === 'zh-TW') return `${folded ? '展開' : '摺疊'} · ${lines} 行`;
+    return `${folded ? '展开' : '折叠'} · ${lines} 行`;
+  }
+
   function enhanceCodeBlocks(isRunning) {
     if (typeof document === 'undefined' || !currentPrefs.opticalCodeTools) {
       clearCodeEnhancements();
       return;
     }
+    const lang = ['en', 'zh-CN', 'zh-TW', 'ja'].includes(currentPrefs.language) ? currentPrefs.language : 'zh-CN';
     const pres = document.querySelectorAll('pre');
     if (!pres.length) return;
     const activeContainer = isRunning
@@ -704,18 +712,20 @@ html[data-agy-opt-code="1"] pre[data-agy-opt-folded="1"] {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'agy-opt-fold-btn';
-      btn.textContent = `折叠 · ${lines} 行`;
+      btn.dataset.agyOptLines = String(lines);
+      btn.textContent = formatFoldLabel(false, lines, lang);
       btn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
+        const activeLang = ['en', 'zh-CN', 'zh-TW', 'ja'].includes(currentPrefs.language) ? currentPrefs.language : 'zh-CN';
         const isFolded = pre.getAttribute('data-agy-opt-folded') === '1';
         if (isFolded) {
           pre.removeAttribute('data-agy-opt-folded');
-          btn.textContent = `折叠 · ${lines} 行`;
+          btn.textContent = formatFoldLabel(false, lines, activeLang);
         } else {
           const topBefore = pre.getBoundingClientRect().top;
           pre.setAttribute('data-agy-opt-folded', '1');
-          btn.textContent = `展开 · ${lines} 行`;
+          btn.textContent = formatFoldLabel(true, lines, activeLang);
           const delta = pre.getBoundingClientRect().top - topBefore;
           if (Math.abs(delta) > 4) pre.scrollIntoView?.({ block: 'nearest' });
         }
@@ -739,6 +749,7 @@ html[data-agy-opt-code="1"] pre[data-agy-opt-folded="1"] {
       opticalGlass: typeof prefs.opticalGlass === 'boolean' ? prefs.opticalGlass : DEFAULT_OPTICAL.opticalGlass,
       opticalMotion: typeof prefs.opticalMotion === 'boolean' ? prefs.opticalMotion : DEFAULT_OPTICAL.opticalMotion,
       opticalCodeTools: typeof prefs.opticalCodeTools === 'boolean' ? prefs.opticalCodeTools : DEFAULT_OPTICAL.opticalCodeTools,
+      language: ['en', 'zh-CN', 'zh-TW', 'ja'].includes(prefs.language) ? prefs.language : (currentPrefs.language || 'zh-CN'),
     };
 
     const anyEnabled = currentPrefs.opticalLightTheme !== 'native'
@@ -772,6 +783,13 @@ html[data-agy-opt-code="1"] pre[data-agy-opt-folded="1"] {
     syncPointerTracker(currentPrefs.opticalPrismRim);
     scanStreamingInk(isRunning);
     enhanceCodeBlocks(isRunning);
+    for (const foldBtn of document.querySelectorAll('.agy-opt-fold-btn[data-agy-opt-lines]')) {
+      const pre = foldBtn.closest('.agy-opt-fold-bar')?.previousElementSibling || foldBtn.parentElement?.nextElementSibling;
+      const isFolded = pre?.getAttribute?.('data-agy-opt-folded') === '1';
+      const n = Number(foldBtn.dataset.agyOptLines) || 0;
+      const nextText = formatFoldLabel(isFolded, n, currentPrefs.language);
+      if (foldBtn.textContent !== nextText) foldBtn.textContent = nextText;
+    }
 
     if ((currentPrefs.opticalPrismRim || currentPrefs.opticalMotion || currentPrefs.opticalCodeTools) && !codeObserver && document.body) {
       codeObserver = new MutationObserver(() => {
@@ -819,7 +837,7 @@ html[data-agy-opt-code="1"] pre[data-agy-opt-folded="1"] {
   }
 
   return {
-    version: 13,
+    version: 14,
     DEFAULT_OPTICAL,
     LIGHT_PALETTES,
     DARK_PALETTES,
@@ -831,4 +849,4 @@ html[data-agy-opt-code="1"] pre[data-agy-opt-folded="1"] {
   };
 }
 
-export const getOpticalThemeScript = () => `if (globalThis.__agyPrismOptical?.version !== 13) globalThis.__agyPrismOptical = (${createOpticalThemeEngine.toString()})();`;
+export const getOpticalThemeScript = () => `if (globalThis.__agyPrismOptical?.version !== 14) globalThis.__agyPrismOptical = (${createOpticalThemeEngine.toString()})();`;

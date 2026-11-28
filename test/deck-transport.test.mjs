@@ -120,7 +120,7 @@ test('toView renders --% for null quota remainingFraction and drops unused conte
 
 test('Overview turn & request history rows hide details until expanded, preserve tooltip, and reset across conversations', () => {
   const ui = createPresentation();
-  assert.equal(ui.version, 73);
+  assert.equal(ui.version, 74);
   assert.equal(ui.localeWidthClass('en'), 'wide');
   assert.equal(ui.localeWidthClass('ja'), 'wide');
   assert.equal(ui.localeWidthClass('zh-CN'), 'compact');

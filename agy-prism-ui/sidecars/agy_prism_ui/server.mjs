@@ -1357,11 +1357,13 @@ const UI_HTML = `<!DOCTYPE html>
       ['en', '', 'EN'],
       ['zh-CN', '', '简'],
       ['zh-TW', '', '繁'],
+      ['ja', '', '日'],
     ])}
     ${renderPickCard('language', [
       ['en', '', 'EN'],
       ['zh-CN', '', '简'],
       ['zh-TW', '', '繁'],
+      ['ja', '', '日'],
     ])}
 
     <div class="settings-scope" data-i18n="appearanceSection"></div>
@@ -1574,7 +1576,7 @@ const UI_HTML = `<!DOCTYPE html>
         const active = String(prefs[swatch.dataset.pickSetting] === swatch.dataset.pickValue);
         swatch.dataset.active = active;
         swatch.setAttribute('aria-pressed', active);
-        const label = settingsLabels[swatch.dataset.pickLabel] || ({ en: 'English', 'zh-CN': '简体中文', 'zh-TW': '繁體中文' })[swatch.dataset.pickValue] || swatch.dataset.pickValue;
+        const label = settingsLabels[swatch.dataset.pickLabel] || ({ en: 'English', 'zh-CN': '简体中文', 'zh-TW': '繁體中文', ja: '日本語' })[swatch.dataset.pickValue] || swatch.dataset.pickValue;
         const name = settingsLabels[swatch.dataset.pickSetting] + ': ' + label;
         swatch.setAttribute('aria-label', name);
         swatch.removeAttribute('title');
