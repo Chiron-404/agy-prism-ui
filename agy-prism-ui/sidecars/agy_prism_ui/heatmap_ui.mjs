@@ -2292,7 +2292,7 @@ ${getDayPopCss(accent, dark)}
   } catch {}
 
   return {
-    version: 27,
+    version: 28,
     SUPPORTED_HM_LOCALES,
     resolveHmLang,
     hmT,
@@ -2311,4 +2311,4 @@ ${getDayPopCss(accent, dark)}
   };
 }
 
-export const getHeatmapRendererScript = () => `if (globalThis.__agyPrismHeatmapUI?.version !== 27) globalThis.__agyPrismHeatmapUI = (${createHeatmapRenderer.toString()})();`;
+export const getHeatmapRendererScript = () => `if (globalThis.__agyPrismHeatmapUI?.version !== 28) globalThis.__agyPrismHeatmapUI = (${createHeatmapRenderer.toString()})();`;

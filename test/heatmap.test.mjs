@@ -260,7 +260,7 @@ test('estimateRequestCostUsd prioritizes Hydrogen family over generic Orchestrat
   assert.ok(Math.abs(orchWorkerCost - 3.75) < 1e-6);
 
   const ui = createHeatmapRenderer();
-  assert.equal(ui.version, 27);
+  assert.equal(ui.version, 28);
   assert.equal(typeof ui.buildDynamicPalette, 'function');
   assert.equal(typeof ui.cleanupHeatmapRoot, 'function');
   const src = createHeatmapRenderer.toString();
